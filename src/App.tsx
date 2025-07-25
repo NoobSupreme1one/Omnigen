@@ -1,0 +1,160 @@
+import React, { useState } from 'react';
+import { Menu } from 'lucide-react';
+import AuthWrapper from './components/AuthWrapper';
+import BookSidebar from './components/BookSidebar';
+import BookPrompt from './components/BookPrompt';
+import OutlineView from './components/OutlineView';
+import ChapterView from './components/ChapterView';
+import { Book, BookChapter, SubChapter } from './types';
+import { saveBook, loadBook } from './services/bookService';
+
+function App() {
+  const [currentStep, setCurrentStep] = useState<'prompt' | 'outline' | 'chapter'>('prompt');
+  const [book, setBook] = useState<Book | null>(null);
+  const [selectedChapter, setSelectedChapter] = useState<BookChapter | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  
+  const apiKeys = {
+    gemini: import.meta.env.VITE_GEMINI_API_KEY || '',
+    perplexity: import.meta.env.VITE_PERPLEXITY_API_KEY || ''
+  };
+
+  const handleBookGenerated = (generatedBook: Book) => {
+    saveBookToDatabase(generatedBook);
+    setBook(generatedBook);
+    setCurrentStep('outline');
+  };
+
+  const saveBookToDatabase = async (bookToSave: Book) => {
+    try {
+      await saveBook(bookToSave);
+    } catch (error) {
+      console.error('Error saving book:', error);
+    }
+  };
+
+  const handleChapterClick = (chapter: BookChapter) => {
+    setSelectedChapter(chapter);
+    setCurrentStep('chapter');
+  };
+
+  const handleBackToOutline = () => {
+    setSelectedChapter(null);
+    setCurrentStep('outline');
+  };
+
+  const handleUpdateChapter = (updatedChapter: BookChapter) => {
+    if (!book) return;
+    
+    const updatedChapters = book.chapters.map(ch => 
+      ch.id === updatedChapter.id ? updatedChapter : ch
+    );
+    
+    const updatedBook = { ...book, chapters: updatedChapters };
+    setBook(updatedBook);
+    setSelectedChapter(updatedChapter);
+    
+    // Auto-save progress
+    saveBookToDatabase(updatedBook);
+  };
+
+  const handleNewBook = () => {
+    setBook(null);
+    setSelectedChapter(null);
+    setCurrentStep('prompt');
+  };
+
+  const handleSelectBook = async (selectedBook: Book) => {
+    try {
+      const fullBook = await loadBook(selectedBook.id);
+      if (fullBook) {
+        setBook(fullBook);
+        setSelectedChapter(null);
+        setCurrentStep('outline');
+        setSidebarOpen(false);
+      }
+    } catch (error) {
+      console.error('Error loading book:', error);
+      alert('Failed to load book. Please try again.');
+    }
+  };
+
+  const handleNewBookFromSidebar = () => {
+    setBook(null);
+    setSelectedChapter(null);
+    setCurrentStep('prompt');
+    setSidebarOpen(false);
+  };
+
+  return (
+    <AuthWrapper>
+      <div className="flex h-screen">
+        {/* Sidebar */}
+        <BookSidebar
+          isOpen={sidebarOpen}
+          onToggle={() => setSidebarOpen(!sidebarOpen)}
+          onSelectBook={handleSelectBook}
+          onNewBook={handleNewBookFromSidebar}
+          currentBookId={book?.id}
+        />
+
+        {/* Main Content */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Header */}
+          <header className="bg-white shadow-sm border-b border-gray-200 px-4 py-4 lg:px-8">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => setSidebarOpen(!sidebarOpen)}
+                  className="lg:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors duration-200"
+                >
+                  <Menu className="w-5 h-5 text-gray-600" />
+                </button>
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-800">AI eBook Generator</h1>
+                  <p className="text-gray-600 hidden sm:block">Create comprehensive eBooks with AI-powered research and generation</p>
+                </div>
+              </div>
+            </div>
+          </header>
+
+          {/* Content */}
+          <main className="flex-1 overflow-y-auto p-4 lg:p-8">
+            <div className="max-w-6xl mx-auto">
+              {currentStep === 'prompt' && (
+                <BookPrompt 
+                  onBookGenerated={handleBookGenerated}
+                  apiKeys={apiKeys}
+                />
+              )}
+
+              {currentStep === 'outline' && book && (
+                <OutlineView 
+                  book={book}
+                  onChapterClick={handleChapterClick}
+                  onNewBook={handleNewBook}
+                  onUpdateBook={(updatedBook) => {
+                    setBook(updatedBook);
+                    saveBookToDatabase(updatedBook);
+                  }}
+                  apiKeys={apiKeys}
+                />
+              )}
+
+              {currentStep === 'chapter' && selectedChapter && book && (
+                <ChapterView 
+                  chapter={selectedChapter}
+                  onBack={handleBackToOutline}
+                  onUpdateChapter={handleUpdateChapter}
+                  apiKeys={apiKeys}
+                />
+              )}
+            </div>
+          </main>
+        </div>
+      </div>
+    </AuthWrapper>
+  );
+}
+
+export default App;
