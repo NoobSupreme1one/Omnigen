@@ -103,8 +103,11 @@ const APISettings: React.FC<APISettingsProps> = ({ onAPIKeysSet }) => {
           </p>
         </div>
       </div>
+      <WordpressSettings />
     </div>
   );
 };
+
+import WordpressSettings from './WordpressSettings';
 
 export default APISettings;

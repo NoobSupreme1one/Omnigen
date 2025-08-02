@@ -78,7 +78,7 @@ export const generateBookCover = async (book: Book, geminiApiKey: string): Promi
           }],
           parameters: {
             sampleCount: 1,
-            aspectRatio: "3:4", // Good for book covers
+            aspectRatio: aspectRatio, // Good for book covers
             safetySetting: "block_medium_and_above",
             personGeneration: "allow_adult",
             addWatermark: false
@@ -183,7 +183,8 @@ export const generateBookCover = async (book: Book, geminiApiKey: string): Promi
       }
     }
   }
-};
+  throw new Error('Image generation failed after all attempts.');
+}
 
 // Alternative: Generate cover using DALL-E (if user has OpenAI API key)
 export const generateBookCoverWithDALLE = async (book: Book, apiKey: string): Promise<string> => {
@@ -264,4 +265,17 @@ export const generateBookCoverWithDALLE = async (book: Book, apiKey: string): Pr
     console.error('Error generating book cover with DALL-E:', error);
     throw error;
   }
+};
+
+export const generateFeaturedImage = async (title: string, summary: string, geminiApiKey: string): Promise<string> => {
+  const book = {
+    title,
+    author: '',
+    genre: 'non-fiction',
+    subGenre: '',
+    tone: '',
+    description: summary,
+  } as Book;
+
+  return generateBookCover(book, geminiApiKey);
 };

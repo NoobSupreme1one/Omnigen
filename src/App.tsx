@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useEffect } from 'react';
-import { Menu, User } from 'lucide-react';
+import { Menu, User, Settings } from 'lucide-react';
 import AuthWrapper from './components/AuthWrapper';
 import { supabase } from './lib/supabase';
 import BookSidebar from './components/BookSidebar';
@@ -10,16 +10,29 @@ import ChapterView from './components/ChapterView';
 import OnlineCourseChapterView from './components/OnlineCourseChapterView';
 import BookEditor from './components/BookEditor';
 import PersonaManagement from './components/PersonaManagement';
+import WordpressGenerator from './components/WordpressGenerator';
+import WordpressSettings from './components/WordpressSettings';
 import { Book, BookChapter, SubChapter, WritingPersona } from './types';
 import { saveBook, loadBook } from './services/bookService';
+import { getWordpressCredentials } from './services/wordpressService';
 
 function App() {
+  const [currentView, setCurrentView] = useState<'books' | 'articles' | 'personas'>('books');
   const [currentStep, setCurrentStep] = useState<'prompt' | 'outline' | 'chapter' | 'edit' | 'personas'>('prompt');
   const [book, setBook] = useState<Book | null>(null);
   const [selectedChapter, setSelectedChapter] = useState<BookChapter | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedPersona, setSelectedPersona] = useState<WritingPersona | null>(null);
+  const [wordpressConnected, setWordpressConnected] = useState(false);
   
+  
+  useEffect(() => {
+    const creds = getWordpressCredentials('test-user');
+    if (creds) {
+      setWordpressConnected(true);
+    }
+  }, []);
+
   // Handle OAuth callback
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -37,7 +50,7 @@ function App() {
     perplexity: import.meta.env.VITE_PERPLEXITY_API_KEY || ''
   };
 
-  const handleBookGenerated = (generatedBook: Book) => {
+  const handleGenerate = (generatedBook: Book) => {
     saveBookToDatabase(generatedBook);
     setBook(generatedBook);
     setCurrentStep('outline');
@@ -187,12 +200,31 @@ function App() {
                 </button>
 
                 <button
-                  onClick={() => {
-                    console.log('Personas button clicked!');
-                    setCurrentStep('personas');
-                  }}
+                  onClick={() => setCurrentView('books')}
                   className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all duration-200 shadow-sm ${
-                    currentStep === 'personas'
+                    currentView === 'books'
+                      ? 'bg-blue-600 text-white shadow-md'
+                      : 'bg-white text-gray-700 border border-gray-300 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300'
+                  }`}
+                >
+                  <span>Books</span>
+                </button>
+
+                <button
+                  onClick={() => setCurrentView('articles')}
+                  className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all duration-200 shadow-sm ${
+                    currentView === 'articles'
+                      ? 'bg-purple-600 text-white shadow-md'
+                      : 'bg-white text-gray-700 border border-gray-300 hover:bg-purple-50 hover:text-purple-600 hover:border-purple-300'
+                  }`}
+                >
+                  <span>Articles</span>
+                </button>
+
+                <button
+                  onClick={() => setCurrentView('personas')}
+                  className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all duration-200 shadow-sm ${
+                    currentView === 'personas'
                       ? 'bg-indigo-600 text-white shadow-md'
                       : 'bg-white text-gray-700 border border-gray-300 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-300'
                   }`}
@@ -204,7 +236,14 @@ function App() {
 
               {/* Right side - empty for now, can add user menu later */}
               <div className="flex items-center gap-2">
-                {/* Future: User menu, settings, etc. */}
+                {currentView === 'wordpress' && (
+                  <button
+                    onClick={() => setCurrentStep('settings' as any)}
+                    className="p-2 rounded-lg hover:bg-gray-100 transition-colors duration-200"
+                  >
+                    <Settings className="w-5 h-5 text-gray-600" />
+                  </button>
+                )}
               </div>
             </div>
           </header>
@@ -212,42 +251,50 @@ function App() {
           {/* Content */}
           <main className="flex-1 overflow-y-auto p-4 lg:p-8">
             <div className="max-w-6xl mx-auto">
-
-              {currentStep === 'prompt' && (
-                <BookPrompt 
-                  onBookGenerated={handleBookGenerated}
-                  apiKeys={apiKeys}
-                />
+              {currentView === 'books' && (
+                <>
+                  {currentStep === 'prompt' && <BookPrompt onGenerate={handleGenerate} />}
+                  {currentStep === 'outline' && book && (
+                    <OutlineView 
+                      book={book}
+                      onChapterClick={handleChapterClick}
+                      onNewBook={handleNewBook}
+                      onUpdateBook={(updatedBook) => {
+                        setBook(updatedBook);
+                        saveBookToDatabase(updatedBook);
+                      }}
+                      apiKeys={apiKeys}
+                    />
+                  )}
+                  {renderChapterView()}
+                  {currentStep === 'edit' && book && (
+                    <BookEditor
+                      book={book}
+                      onBack={handleBackFromEdit}
+                      onUpdateBook={(updatedBook) => {
+                        setBook(updatedBook);
+                        saveBookToDatabase(updatedBook);
+                      }}
+                      apiKeys={apiKeys}
+                    />
+                  )}
+                </>
               )}
 
-              {currentStep === 'outline' && book && (
-                <OutlineView 
-                  book={book}
-                  onChapterClick={handleChapterClick}
-                  onNewBook={handleNewBook}
-                  onUpdateBook={(updatedBook) => {
-                    setBook(updatedBook);
-                    saveBookToDatabase(updatedBook);
-                  }}
-                  apiKeys={apiKeys}
-                />
+              {currentView === 'articles' && (
+                <>
+                  {wordpressConnected ? (
+                    <WordpressGenerator 
+                      apiKeys={apiKeys} 
+                      persona={selectedPersona} 
+                    />
+                  ) : (
+                    <WordpressSettings onConnect={() => setWordpressConnected(true)} />
+                  )}
+                </>
               )}
 
-              {renderChapterView()}
-
-              {currentStep === 'edit' && book && (
-                <BookEditor
-                  book={book}
-                  onBack={handleBackFromEdit}
-                  onUpdateBook={(updatedBook) => {
-                    setBook(updatedBook);
-                    saveBookToDatabase(updatedBook);
-                  }}
-                  apiKeys={apiKeys}
-                />
-              )}
-
-              {currentStep === 'personas' && (
+              {currentView === 'personas' && (
                 <PersonaManagement
                   apiKeys={apiKeys}
                   onPersonaSelect={setSelectedPersona}

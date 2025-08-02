@@ -420,3 +420,33 @@ export const generateContentWithHeatLevel = async (
   const response = await callGeminiAPI(prompt, apiKey);
   return response.trim();
 };
+
+export const analyzeContentAndGenerateTopics = async (content: string, apiKey: string): Promise<any> => {
+  try {
+    const prompt = `\nPlease analyze the following content from a WordPress blog. Based on the analysis, generate a list of 5 new, relevant, and SEO-friendly blog post topics.\n\nContent:\n${content}\n\nPlease provide a response in the following JSON format:\n{\n  "analysis": {\n    "writingStyle": "...",\n    "tone": "...",\n    "commonTopics": "...",\n    "seoPatterns": "..."\n  },\n  "suggestedTopics": [\n    {\n      "title": "...",\n      "description": "..."\n    }\n  ]\n}\n\nIMPORTANT: Return ONLY the JSON object, no additional text or formatting.\n`;
+
+    const response = await callGeminiAPI(prompt, apiKey);
+    
+    let cleanResponse = response.trim();
+    cleanResponse = cleanResponse.replace(/```json\s*|\s*```/g, '');
+    cleanResponse = cleanResponse.replace(/```\s*|\s*```/g, '');
+    
+    const jsonMatch = cleanResponse.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      console.error('No JSON found in response:', response);
+      throw new Error('No valid JSON found in response');
+    }
+    
+    return JSON.parse(jsonMatch[0]);
+  } catch (error) {
+    console.error('Error analyzing content and generating topics:', error);
+    throw new Error('Failed to analyze content and generate topics. Please check your API key and try again.');
+  }
+};
+
+export const generateArticle = async (topicTitle: string, topicDescription: string, analysis: any, apiKey: string): Promise<string> => {
+  const prompt = `\nPlease write a complete, SEO-optimized blog article based on the following topic and content analysis.\n\nTopic: ${topicTitle}\nDescription: ${topicDescription}\n\nContent Analysis:\n- Writing Style: ${analysis.writingStyle}\n- Tone: ${analysis.tone}\n- Common Topics: ${analysis.commonTopics}\n- SEO Patterns: ${analysis.seoPatterns}\n\nRequirements:\n- The article should be at least 800 words.\n- Use HTML formatting (e.g., <h2>, <p>, <ul>, <li>, <strong>).\n- The article should be engaging, informative, and well-structured.\n- The article should be SEO-optimized for the given topic.\n\nPlease write the article now:\n`;
+
+  const response = await callGeminiAPI(prompt, apiKey);
+  return response.trim();
+};
