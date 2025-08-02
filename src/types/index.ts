@@ -97,3 +97,102 @@ export interface PersonaPreferences {
   specialInstructions: string;
   targetAudience: string[];
 }
+
+// WordPress Publishing System Types
+export interface WordPressSite {
+  id: string;
+  name: string;
+  url: string;
+  username: string;
+  appPassword: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ArticleTemplate {
+  id: string;
+  name: string;
+  description: string;
+  promptTemplate: string;
+  categoryMapping: Record<string, string>;
+  tagTemplates: string[];
+  writingPersonaId?: string;
+  writingPersona?: WritingPersona;
+  featuredImagePrompt: string;
+  seoSettings: SEOSettings;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SEOSettings {
+  titleTemplate?: string;
+  descriptionTemplate?: string;
+  focusKeywords?: string[];
+  metaTags?: Record<string, string>;
+}
+
+export interface PublicationSchedule {
+  id: string;
+  name: string;
+  wordPressSiteId: string;
+  wordPressSite?: WordPressSite;
+  articleTemplateId: string;
+  articleTemplate?: ArticleTemplate;
+  scheduleType: 'daily' | 'weekly' | 'monthly' | 'custom';
+  scheduleConfig: ScheduleConfig;
+  nextRunAt?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ScheduleConfig {
+  days?: number[]; // 0-6 (Sunday-Saturday)
+  time: string; // "HH:MM" format
+  timezone: string;
+  frequency?: number; // For custom schedules
+}
+
+export interface ScheduledArticle {
+  id: string;
+  publicationScheduleId?: string;
+  wordPressSiteId: string;
+  wordPressSite?: WordPressSite;
+  articleTemplateId: string;
+  articleTemplate?: ArticleTemplate;
+  title?: string;
+  content?: string;
+  featuredImageUrl?: string;
+  wordPressCategories: string[];
+  wordPressTags: string[];
+  seoTitle?: string;
+  seoDescription?: string;
+  scheduledFor: string;
+  status: 'pending' | 'generating' | 'ready' | 'publishing' | 'failed';
+  errorMessage?: string;
+  retryCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PublishedArticle {
+  id: string;
+  scheduledArticleId?: string;
+  wordPressSiteId: string;
+  wordPressSite?: WordPressSite;
+  wordPressPostId: number;
+  title: string;
+  url: string;
+  publishedAt: string;
+  performanceData: ArticlePerformanceData;
+  createdAt: string;
+}
+
+export interface ArticlePerformanceData {
+  views?: number;
+  comments?: number;
+  shares?: number;
+  lastUpdated?: string;
+}

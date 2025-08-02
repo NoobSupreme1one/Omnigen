@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useEffect } from 'react';
-import { Menu, User, Settings } from 'lucide-react';
+import { Menu, User, Settings, Globe } from 'lucide-react';
 import AuthWrapper from './components/AuthWrapper';
 import { supabase } from './lib/supabase';
 import BookSidebar from './components/BookSidebar';
@@ -12,12 +12,13 @@ import BookEditor from './components/BookEditor';
 import PersonaManagement from './components/PersonaManagement';
 import WordpressGenerator from './components/WordpressGenerator';
 import WordpressSettings from './components/WordpressSettings';
+import WordPressManagement from './components/WordPressManagement';
 import { Book, BookChapter, SubChapter, WritingPersona } from './types';
 import { saveBook, loadBook } from './services/bookService';
 import { getWordpressCredentials } from './services/wordpressService';
 
 function App() {
-  const [currentView, setCurrentView] = useState<'books' | 'articles' | 'personas'>('books');
+  const [currentView, setCurrentView] = useState<'books' | 'articles' | 'personas' | 'wordpress'>('books');
   const [currentStep, setCurrentStep] = useState<'prompt' | 'outline' | 'chapter' | 'edit' | 'personas'>('prompt');
   const [book, setBook] = useState<Book | null>(null);
   const [selectedChapter, setSelectedChapter] = useState<BookChapter | null>(null);
@@ -232,6 +233,18 @@ function App() {
                   <User className="w-5 h-5" />
                   <span>Writing Personas</span>
                 </button>
+
+                <button
+                  onClick={() => setCurrentView('wordpress')}
+                  className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all duration-200 shadow-sm ${
+                    currentView === 'wordpress'
+                      ? 'bg-green-600 text-white shadow-md'
+                      : 'bg-white text-gray-700 border border-gray-300 hover:bg-green-50 hover:text-green-600 hover:border-green-300'
+                  }`}
+                >
+                  <Globe className="w-5 h-5" />
+                  <span>WordPress Publishing</span>
+                </button>
               </div>
 
               {/* Right side - empty for now, can add user menu later */}
@@ -299,6 +312,12 @@ function App() {
                   apiKeys={apiKeys}
                   onPersonaSelect={setSelectedPersona}
                   selectedPersonaId={selectedPersona?.id}
+                />
+              )}
+
+              {currentView === 'wordpress' && (
+                <WordPressManagement
+                  apiKeys={apiKeys}
                 />
               )}
             </div>

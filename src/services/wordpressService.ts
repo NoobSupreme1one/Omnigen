@@ -1,3 +1,14 @@
+import {
+  WordPressSite,
+  ArticleTemplate,
+  PublicationSchedule,
+  ScheduledArticle,
+  PublishedArticle,
+  SEOSettings,
+  ScheduleConfig
+} from '../types';
+import { supabase } from '../lib/supabase';
+
 export interface WordpressCredentials {
   url: string;
   username: string;
@@ -200,4 +211,287 @@ export const testConnection = async (userId: string): Promise<boolean> => {
     console.error('Connection test failed:', error);
     throw error;
   }
+};
+
+// ===== NEW SCHEDULING SYSTEM =====
+
+// WordPress Sites Management (Database-based)
+export const createWordPressSite = async (siteData: Omit<WordPressSite, 'id' | 'createdAt' | 'updatedAt'>): Promise<WordPressSite> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('User not authenticated');
+
+  const { data, error } = await supabase
+    .from('wordpress_sites')
+    .insert({
+      user_id: user.id,
+      name: siteData.name,
+      url: siteData.url,
+      username: siteData.username,
+      app_password: siteData.appPassword,
+      is_active: siteData.isActive,
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+};
+
+export const getUserWordPressSites = async (): Promise<WordPressSite[]> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('User not authenticated');
+
+  const { data, error } = await supabase
+    .from('wordpress_sites')
+    .select('*')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+};
+
+// Article Templates Management
+export const createArticleTemplate = async (templateData: Omit<ArticleTemplate, 'id' | 'createdAt' | 'updatedAt'>): Promise<ArticleTemplate> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('User not authenticated');
+
+  const { data, error } = await supabase
+    .from('article_templates')
+    .insert({
+      user_id: user.id,
+      name: templateData.name,
+      description: templateData.description,
+      prompt_template: templateData.promptTemplate,
+      category_mapping: templateData.categoryMapping,
+      tag_templates: templateData.tagTemplates,
+      writing_persona_id: templateData.writingPersonaId,
+      featured_image_prompt: templateData.featuredImagePrompt,
+      seo_settings: templateData.seoSettings,
+      is_active: templateData.isActive,
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+};
+
+export const getUserArticleTemplates = async (): Promise<ArticleTemplate[]> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('User not authenticated');
+
+  const { data, error } = await supabase
+    .from('article_templates')
+    .select(`
+      *,
+      writing_persona:writing_personas(*)
+    `)
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+};
+
+// Publication Schedules Management
+export const createPublicationSchedule = async (scheduleData: Omit<PublicationSchedule, 'id' | 'createdAt' | 'updatedAt' | 'nextRunAt'>): Promise<PublicationSchedule> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('User not authenticated');
+
+  // Calculate next run time
+  const nextRunAt = calculateNextRunTime(scheduleData.scheduleType, scheduleData.scheduleConfig);
+
+  const { data, error } = await supabase
+    .from('publication_schedules')
+    .insert({
+      user_id: user.id,
+      name: scheduleData.name,
+      wordpress_site_id: scheduleData.wordPressSiteId,
+      article_template_id: scheduleData.articleTemplateId,
+      schedule_type: scheduleData.scheduleType,
+      schedule_config: scheduleData.scheduleConfig,
+      next_run_at: nextRunAt,
+      is_active: scheduleData.isActive,
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+};
+
+export const getUserPublicationSchedules = async (): Promise<PublicationSchedule[]> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('User not authenticated');
+
+  const { data, error } = await supabase
+    .from('publication_schedules')
+    .select(`
+      *,
+      wordpress_site:wordpress_sites(*),
+      article_template:article_templates(*)
+    `)
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+};
+
+// Scheduled Articles Management
+export const createScheduledArticle = async (articleData: Omit<ScheduledArticle, 'id' | 'createdAt' | 'updatedAt'>): Promise<ScheduledArticle> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('User not authenticated');
+
+  const { data, error } = await supabase
+    .from('scheduled_articles')
+    .insert({
+      user_id: user.id,
+      publication_schedule_id: articleData.publicationScheduleId,
+      wordpress_site_id: articleData.wordPressSiteId,
+      article_template_id: articleData.articleTemplateId,
+      title: articleData.title,
+      content: articleData.content,
+      featured_image_url: articleData.featuredImageUrl,
+      wordpress_categories: articleData.wordPressCategories,
+      wordpress_tags: articleData.wordPressTags,
+      seo_title: articleData.seoTitle,
+      seo_description: articleData.seoDescription,
+      scheduled_for: articleData.scheduledFor,
+      status: articleData.status,
+      retry_count: articleData.retryCount,
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+};
+
+export const getScheduledArticles = async (status?: string): Promise<ScheduledArticle[]> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('User not authenticated');
+
+  let query = supabase
+    .from('scheduled_articles')
+    .select(`
+      *,
+      wordpress_site:wordpress_sites(*),
+      article_template:article_templates(*)
+    `)
+    .eq('user_id', user.id);
+
+  if (status) {
+    query = query.eq('status', status);
+  }
+
+  const { data, error } = await query.order('scheduled_for', { ascending: true });
+
+  if (error) throw error;
+  return data || [];
+};
+
+export const updateScheduledArticle = async (id: string, updates: Partial<ScheduledArticle>): Promise<ScheduledArticle> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('User not authenticated');
+
+  const { data, error } = await supabase
+    .from('scheduled_articles')
+    .update(updates)
+    .eq('id', id)
+    .eq('user_id', user.id)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+};
+
+// Schedule calculation utilities
+export const calculateNextRunTime = (scheduleType: string, config: ScheduleConfig): string => {
+  const now = new Date();
+  const [hours, minutes] = config.time.split(':').map(Number);
+
+  let nextRun = new Date(now);
+  nextRun.setHours(hours, minutes, 0, 0);
+
+  // If the time has already passed today, move to next occurrence
+  if (nextRun <= now) {
+    switch (scheduleType) {
+      case 'daily':
+        nextRun.setDate(nextRun.getDate() + 1);
+        break;
+      case 'weekly':
+        nextRun.setDate(nextRun.getDate() + 7);
+        break;
+      case 'monthly':
+        nextRun.setMonth(nextRun.getMonth() + 1);
+        break;
+      default:
+        nextRun.setDate(nextRun.getDate() + 1);
+    }
+  }
+
+  return nextRun.toISOString();
+};
+
+// Get articles due for generation/publication
+export const getArticlesDueForProcessing = async (): Promise<ScheduledArticle[]> => {
+  const now = new Date().toISOString();
+
+  const { data, error } = await supabase
+    .from('scheduled_articles')
+    .select(`
+      *,
+      wordpress_site:wordpress_sites(*),
+      article_template:article_templates(*)
+    `)
+    .lte('scheduled_for', now)
+    .in('status', ['pending', 'ready'])
+    .order('scheduled_for', { ascending: true });
+
+  if (error) throw error;
+  return data || [];
+};
+
+// Published Articles tracking
+export const createPublishedArticle = async (articleData: Omit<PublishedArticle, 'id' | 'createdAt'>): Promise<PublishedArticle> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('User not authenticated');
+
+  const { data, error } = await supabase
+    .from('published_articles')
+    .insert({
+      user_id: user.id,
+      scheduled_article_id: articleData.scheduledArticleId,
+      wordpress_site_id: articleData.wordPressSiteId,
+      wordpress_post_id: articleData.wordPressPostId,
+      title: articleData.title,
+      url: articleData.url,
+      published_at: articleData.publishedAt,
+      performance_data: articleData.performanceData,
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+};
+
+export const getPublishedArticles = async (): Promise<PublishedArticle[]> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('User not authenticated');
+
+  const { data, error } = await supabase
+    .from('published_articles')
+    .select(`
+      *,
+      wordpress_site:wordpress_sites(*)
+    `)
+    .eq('user_id', user.id)
+    .order('published_at', { ascending: false });
+
+  if (error) throw error;
+  return data || [];
 };
