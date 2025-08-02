@@ -20,7 +20,8 @@
     "test:imagen": "node scripts/test-imagen.js",
     "test:vertex": "node scripts/test-vertex-ai.js",
     "test:prompts": "node scripts/test-cover-prompts.js",
-    "test:personas": "node scripts/test-personas.js"
+    "test:personas": "node scripts/test-personas.js",
+    "test:wordpress": "node scripts/test-wordpress-connection.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.52.1",

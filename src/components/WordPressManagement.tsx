@@ -15,12 +15,18 @@ import {
   getUserPublicationSchedules,
   getScheduledArticles
 } from '../services/wordpressService';
+import {
+  debugWordPressConnection,
+  getCommonSolutions,
+  WordPressDebugResult
+} from '../services/wordpressDebugService';
 import { getUserPersonas } from '../services/personaService';
-import { 
-  Plus, 
-  Globe, 
-  FileText, 
-  Calendar, 
+import WordPressTroubleshooter from './WordPressTroubleshooter';
+import {
+  Plus,
+  Globe,
+  FileText,
+  Calendar,
   Clock,
   Settings,
   Play,
@@ -30,7 +36,8 @@ import {
   ExternalLink,
   CheckCircle,
   AlertCircle,
-  Loader
+  Loader,
+  HelpCircle
 } from 'lucide-react';
 
 interface WordPressManagementProps {
@@ -53,6 +60,12 @@ const WordPressManagement: React.FC<WordPressManagementProps> = ({ apiKeys }) =>
   const [showSiteModal, setShowSiteModal] = useState(false);
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [showDebugModal, setShowDebugModal] = useState(false);
+  const [showTroubleshooter, setShowTroubleshooter] = useState(false);
+
+  // Debug state
+  const [debugResults, setDebugResults] = useState<WordPressDebugResult[]>([]);
+  const [isDebugging, setIsDebugging] = useState(false);
 
   // Forms
   const [siteForm, setSiteForm] = useState({
@@ -110,7 +123,27 @@ const WordPressManagement: React.FC<WordPressManagementProps> = ({ apiKeys }) =>
       loadData();
     } catch (error) {
       console.error('Error creating WordPress site:', error);
-      alert('Failed to create WordPress site. Please check your credentials.');
+      alert('Failed to create WordPress site. Click "Debug Connection" to troubleshoot the issue.');
+    }
+  };
+
+  const handleDebugConnection = async () => {
+    setIsDebugging(true);
+    setShowDebugModal(true);
+
+    try {
+      const results = await debugWordPressConnection(siteForm);
+      setDebugResults(results);
+    } catch (error) {
+      console.error('Debug failed:', error);
+      setDebugResults([{
+        step: 'Debug Error',
+        status: 'error',
+        message: 'Failed to run diagnostics',
+        details: { error: error.message }
+      }]);
+    } finally {
+      setIsDebugging(false);
     }
   };
 
@@ -157,6 +190,13 @@ const WordPressManagement: React.FC<WordPressManagementProps> = ({ apiKeys }) =>
           <h2 className="text-2xl font-bold text-gray-800">WordPress Publishing</h2>
           <p className="text-gray-600">Manage sites, templates, and automated publishing</p>
         </div>
+        <button
+          onClick={() => setShowTroubleshooter(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700"
+        >
+          <HelpCircle className="w-4 h-4" />
+          Connection Help
+        </button>
       </div>
 
       {/* Tabs */}
@@ -513,13 +553,20 @@ const WordPressManagement: React.FC<WordPressManagementProps> = ({ apiKeys }) =>
             <div className="flex gap-2 mt-6">
               <button
                 onClick={() => setShowSiteModal(false)}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
               >
                 Cancel
               </button>
               <button
+                onClick={handleDebugConnection}
+                disabled={!siteForm.url || !siteForm.username || !siteForm.appPassword}
+                className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Debug Connection
+              </button>
+              <button
                 onClick={handleCreateSite}
-                className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
               >
                 Add Site
               </button>
@@ -613,6 +660,111 @@ const WordPressManagement: React.FC<WordPressManagementProps> = ({ apiKeys }) =>
             </div>
           </div>
         </div>
+      )}
+
+      {/* Debug Modal */}
+      {showDebugModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-4xl w-full p-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">WordPress Connection Diagnostics</h3>
+              <button
+                onClick={() => setShowDebugModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            </div>
+
+            {isDebugging ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader className="w-6 h-6 animate-spin text-indigo-600 mr-2" />
+                <span>Running diagnostics...</span>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {debugResults.map((result, index) => (
+                  <div key={index} className={`p-4 rounded-lg border-l-4 ${
+                    result.status === 'success' ? 'bg-green-50 border-green-500' :
+                    result.status === 'warning' ? 'bg-yellow-50 border-yellow-500' :
+                    'bg-red-50 border-red-500'
+                  }`}>
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          {result.status === 'success' && <CheckCircle className="w-4 h-4 text-green-600" />}
+                          {result.status === 'warning' && <AlertCircle className="w-4 h-4 text-yellow-600" />}
+                          {result.status === 'error' && <AlertCircle className="w-4 h-4 text-red-600" />}
+                          <span className="font-medium text-gray-900">{result.step}</span>
+                        </div>
+                        <p className={`text-sm ${
+                          result.status === 'success' ? 'text-green-700' :
+                          result.status === 'warning' ? 'text-yellow-700' :
+                          'text-red-700'
+                        }`}>
+                          {result.message}
+                        </p>
+                        {result.suggestion && (
+                          <p className="text-xs text-gray-600 mt-2 bg-gray-100 p-2 rounded">
+                            💡 {result.suggestion}
+                          </p>
+                        )}
+                        {result.details && (
+                          <details className="mt-2">
+                            <summary className="text-xs text-gray-500 cursor-pointer">Technical Details</summary>
+                            <pre className="text-xs text-gray-600 mt-1 bg-gray-100 p-2 rounded overflow-x-auto">
+                              {JSON.stringify(result.details, null, 2)}
+                            </pre>
+                          </details>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+                {debugResults.length > 0 && (
+                  <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+                    <h4 className="font-medium text-blue-900 mb-2">Common Solutions:</h4>
+                    <div className="space-y-2">
+                      {getCommonSolutions().map((solution, index) => (
+                        <details key={index} className="text-sm">
+                          <summary className="text-blue-700 cursor-pointer font-medium">
+                            {solution.issue}
+                          </summary>
+                          <p className="text-blue-600 mt-1 ml-4 whitespace-pre-line">
+                            {solution.solution}
+                          </p>
+                        </details>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="flex gap-2 mt-6">
+              <button
+                onClick={() => setShowDebugModal(false)}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+              >
+                Close
+              </button>
+              {!isDebugging && debugResults.length > 0 && (
+                <button
+                  onClick={handleDebugConnection}
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                >
+                  Run Again
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Troubleshooter Modal */}
+      {showTroubleshooter && (
+        <WordPressTroubleshooter onClose={() => setShowTroubleshooter(false)} />
       )}
     </div>
   );
