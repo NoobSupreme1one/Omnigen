@@ -42,6 +42,7 @@ const AutoPublishing: React.FC<AutoPublishingProps> = ({ apiKeys }) => {
   const [analyzing, setAnalyzing] = useState<string | null>(null);
   const [generating, setGenerating] = useState<string | null>(null);
   const [automationStatus, setAutomationStatus] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
 
   // Form state
   const [selectedSiteId, setSelectedSiteId] = useState('');
@@ -61,21 +62,40 @@ const AutoPublishing: React.FC<AutoPublishingProps> = ({ apiKeys }) => {
       setAutomationStatus(status);
     } catch (error) {
       console.error('Error loading automation status:', error);
+      // Don't set error for automation status - it's not critical
+      setAutomationStatus(null);
     }
   };
 
   const loadData = async () => {
     try {
       setLoading(true);
+      setError(null);
+
       const [schedulesData, sitesData] = await Promise.all([
         getUserAutoPublishingSchedules(),
         getUserWordPressSites()
       ]);
-      
+
       setSchedules(schedulesData);
       setSites(sitesData);
     } catch (error) {
       console.error('Error loading data:', error);
+
+      // Handle specific error types
+      if (error instanceof Error) {
+        if (error.message.includes('User not authenticated') || error.message.includes('Auth session missing')) {
+          setError('Please sign in to access auto-publishing features.');
+        } else {
+          setError(`Failed to load data: ${error.message}`);
+        }
+      } else {
+        setError('An unexpected error occurred while loading data.');
+      }
+
+      // Set empty data on error
+      setSchedules([]);
+      setSites([]);
     } finally {
       setLoading(false);
     }
@@ -200,8 +220,29 @@ const AutoPublishing: React.FC<AutoPublishingProps> = ({ apiKeys }) => {
         </button>
       </div>
 
+      {/* Error message */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-2 text-red-800">
+                <AlertCircle className="w-5 h-5" />
+                <span className="font-medium">Error</span>
+              </div>
+              <p className="text-red-700 text-sm mt-1">{error}</p>
+            </div>
+            <button
+              onClick={loadData}
+              className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* No sites warning */}
-      {sites.length === 0 && (
+      {!error && sites.length === 0 && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
           <div className="flex items-center gap-2 text-yellow-800">
             <AlertCircle className="w-5 h-5" />

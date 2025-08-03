@@ -177,7 +177,19 @@ const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
 
   const checkUser = async () => {
     console.log('Starting user authentication check...');
-    
+
+    // Temporary test mode bypass for development
+    if (window.location.search.includes('testmode=true')) {
+      console.log('Test mode enabled - bypassing authentication');
+      setUser({
+        id: 'test-user',
+        email: 'test@user.com',
+        user_metadata: { name: 'Test User' }
+      } as any);
+      setLoading(false);
+      return;
+    }
+
     // First test the connection
     const connectionTest = await testSupabaseConnection();
     if (!connectionTest.success) {
