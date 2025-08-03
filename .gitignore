@@ -35,3 +35,7 @@ node_modules/
 # tasks.json
 # tasks/ 
 .vercel
+
+# Google Cloud credentials
+*.json
+unstack-*.json
