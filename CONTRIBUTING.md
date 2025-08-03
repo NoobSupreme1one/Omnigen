@@ -29,8 +29,8 @@ Thank you for your interest in contributing to BookGen! This document provides g
 ### Local Development
 ```bash
 # Clone your fork
-git clone https://github.com/your-username/bookgen.git
-cd bookgen
+git clone https://github.com/your-username/omnigen.git
+cd omnigen
 
 # Install dependencies
 npm install

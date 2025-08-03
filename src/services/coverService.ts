@@ -66,7 +66,7 @@ export const generateBookCover = async (book: Book, geminiApiKey: string): Promi
         throw new Error('Vertex AI requires Google Cloud authentication. Using Gemini API instead.');
       }
 
-      const response = await fetch(`https://us-central1-aiplatform.googleapis.com/v1/projects/unstackapp/locations/us-central1/publishers/google/models/imagen-4.0-ultra-generate-preview-06-06:predict`, {
+      const response = await fetch(`https://us-central1-aiplatform.googleapis.com/v1/projects/omnigenapp/locations/us-central1/publishers/google/models/imagen-4.0-ultra-generate-preview-06-06:predict`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,

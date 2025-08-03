@@ -2,7 +2,7 @@
 
 ## 🎯 **Enhanced Google AI Image Generation**
 
-Your BookGen now has a **dual-tier Google AI image generation system**:
+Your Omnigen now has a **dual-tier Google AI image generation system**:
 
 1. **Primary**: Vertex AI Imagen (production-ready, when available)
 2. **Fallback**: Gemini API (working perfectly now)
@@ -17,7 +17,7 @@ Your BookGen now has a **dual-tier Google AI image generation system**:
 
 ### **Ready for Production:**
 - 🚀 **Vertex AI Imagen**: Will activate when deployed to Google Cloud
-- 🔧 **Project configured**: `unstackapp` in `us-central1`
+- 🔧 **Project configured**: `omnigenapp` in `us-central1`
 - 📈 **Scalable**: Production-ready infrastructure
 
 ## 🧪 **Test Results**
@@ -62,7 +62,7 @@ When you deploy to Google Cloud, Vertex AI will automatically activate:
 
 ```env
 # Already configured in your .env
-VITE_GOOGLE_CLOUD_PROJECT=unstackapp
+VITE_GOOGLE_CLOUD_PROJECT=omnigenapp
 VITE_GOOGLE_CLOUD_LOCATION=us-central1
 ```
 
@@ -107,7 +107,7 @@ npm run test:oauth
 
 **Your setup is production-ready!**
 
-1. **Click "Google AI"** in BookGen
+1. **Click "Google AI"** in Omnigen
 2. **System automatically uses best available option**
 3. **Get high-quality book covers** instantly
 4. **No additional setup needed**

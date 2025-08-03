@@ -116,7 +116,7 @@ console.log('   • "Movie poster quality" + Imagen 4.0 Ultra');
 console.log('   • → Complete photorealistic book covers!\n');
 
 console.log('🚀 **Ready to Test:**');
-console.log('1. Go to your BookGen app');
+console.log('1. Go to your Omnigen app');
 console.log('2. Generate a new cover with Google AI');
 console.log('3. Should now create COMPLETE photorealistic book covers!');
 console.log('4. Try different genres to see varied photographic styles');

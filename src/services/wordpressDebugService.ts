@@ -153,7 +153,7 @@ export class WordPressDebugger {
       
       // Test if user can create posts
       const testPostData = {
-        title: 'BookGen Connection Test',
+        title: 'Omnigen Connection Test',
         content: 'This is a test post to verify permissions.',
         status: 'draft' // Create as draft to avoid publishing
       };

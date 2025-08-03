@@ -129,7 +129,7 @@ The Auto-Publishing System is a **streamlined, intelligent content automation** 
 - **User with publishing permissions**
 - **At least 5-10 existing posts** for analysis
 
-### **BookGen Requirements**
+### **Omnigen Requirements**
 - **Gemini API key** for content generation
 - **Connected WordPress site**
 - **Active internet connection**

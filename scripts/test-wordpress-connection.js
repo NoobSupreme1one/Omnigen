@@ -126,7 +126,7 @@ async function testWordPressConnection() {
       const postsUrl = `${url.replace(/\/$/, '')}/wp-json/wp/v2/posts`;
       
       const testPost = {
-        title: 'BookGen Connection Test',
+        title: 'Omnigen Connection Test',
         content: 'This is a test post to verify permissions. It will be deleted automatically.',
         status: 'draft'
       };
@@ -199,7 +199,7 @@ async function testWordPressConnection() {
     }
     
     console.log('\n🎯 Summary:');
-    console.log('If all tests pass, your WordPress site should work with BookGen.');
+    console.log('If all tests pass, your WordPress site should work with Omnigen.');
     console.log('If any tests fail, follow the solutions provided above.');
     console.log('\n📚 Additional Resources:');
     console.log('• WordPress REST API: https://developer.wordpress.org/rest-api/');

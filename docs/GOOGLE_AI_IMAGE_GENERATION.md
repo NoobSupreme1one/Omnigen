@@ -65,7 +65,7 @@ Google's image generation through the Gemini API appears to be:
    - Create new API key
    - Add billing method (DALL-E costs ~$0.04 per image)
 
-2. **Use in BookGen**:
+2. **Use in Omnigen**:
    - Click "DALL-E" button instead of "Google AI"
    - Enter your OpenAI API key when prompted
    - Generate beautiful book covers instantly

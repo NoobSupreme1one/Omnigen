@@ -1,8 +1,8 @@
-# Unstack UI/UX Improvement Report
+# Omnigen UI/UX Improvement Report
 
 ## Executive Summary
 
-After conducting a thorough analysis of the Unstack AI-powered eBook generator application using Playwright, I've identified several key areas for improvement to enhance user experience, accessibility, and overall usability. The application has a solid foundation but would benefit from modern UI/UX enhancements, better visual hierarchy, improved accessibility, and more intuitive user flows.
+After conducting a thorough analysis of the Omnigen AI-powered content generation application using Playwright, I've identified several key areas for improvement to enhance user experience, accessibility, and overall usability. The application has a solid foundation but would benefit from modern UI/UX enhancements, better visual hierarchy, improved accessibility, and more intuitive user flows.
 
 ## Current State Analysis
 

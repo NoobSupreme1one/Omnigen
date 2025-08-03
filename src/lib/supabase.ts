@@ -34,7 +34,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
   global: {
     headers: {
-      'x-client-info': 'bookgen-app'
+      'x-client-info': 'omnigen-app'
     }
   }
 });

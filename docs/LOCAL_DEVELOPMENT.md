@@ -1,6 +1,6 @@
 # Local Development with Supabase
 
-This guide explains how to set up and use the local Supabase environment for BookGen development.
+This guide explains how to set up and use the local Supabase environment for Omnigen development.
 
 ## 🚀 Quick Start
 
@@ -128,8 +128,8 @@ Create test users through:
 ./scripts/dev-local.sh logs
 
 # View specific service logs
-docker logs supabase_db_bookgen
-docker logs supabase_auth_bookgen
+docker logs supabase_db_omnigen
+docker logs supabase_auth_omnigen
 ```
 
 ### Studio Features

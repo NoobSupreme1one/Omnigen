@@ -1,8 +1,8 @@
-# 📚 Unstack - AI-Powered eBook Generator
+# 📚 Omnigen - AI-Powered Content Generation Platform
 
-> Transform your ideas into complete books with the power of AI
+> Transform your ideas into complete books, articles, and multimedia content with the power of AI
 
-Unstack is a comprehensive AI-powered platform that helps you create, edit, and publish complete books from simple prompts. Whether you're writing fiction, non-fiction, or specialized content, Unstack streamlines the entire book creation process with intelligent automation and professional-grade features.
+Omnigen is a comprehensive AI-powered platform that helps you create, edit, and publish complete books, articles, and multimedia content from simple prompts. Whether you're writing fiction, non-fiction, specialized content, or generating automated blog posts, Omnigen streamlines the entire content creation process with intelligent automation and professional-grade features.
 
 ## ✨ Features
 
@@ -65,8 +65,8 @@ Unstack is a comprehensive AI-powered platform that helps you create, edit, and 
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/your-username/Unstack.git
-   cd Unstack
+   git clone https://github.com/NoobSupreme1one/Omnigen.git
+   cd Omnigen
    ```
 
 2. **Install dependencies**
@@ -127,7 +127,7 @@ Unstack is a comprehensive AI-powered platform that helps you create, edit, and 
 ```
 src/
 ├── components/           # React components
-│   ├── AudioUnstackerator.tsx
+│   ├── AudiobookGenerator.tsx
 │   ├── BookEditor.tsx
 │   ├── BookPrompt.tsx
 │   ├── BookSidebar.tsx
@@ -256,9 +256,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🆘 Support
 
-- **Documentation**: Check our [Wiki](https://github.com/your-username/Unstack/wiki)
-- **Issues**: Report bugs on [GitHub Issues](https://github.com/your-username/Unstack/issues)
-- **Discussions**: Join our [GitHub Discussions](https://github.com/your-username/Unstack/discussions)
+- **Documentation**: Check our [Wiki](https://github.com/NoobSupreme1one/Omnigen/wiki)
+- **Issues**: Report bugs on [GitHub Issues](https://github.com/NoobSupreme1one/Omnigen/issues)
+- **Discussions**: Join our [GitHub Discussions](https://github.com/NoobSupreme1one/Omnigen/discussions)
 
 ## 🗺️ Roadmap
 

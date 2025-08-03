@@ -26,7 +26,7 @@ if (fs.existsSync(envPath)) {
   });
 }
 
-const project = envVars.VITE_GOOGLE_CLOUD_PROJECT || 'unstackapp';
+const project = envVars.VITE_GOOGLE_CLOUD_PROJECT || 'omnigenapp';
 const location = envVars.VITE_GOOGLE_CLOUD_LOCATION || 'us-central1';
 const apiKey = envVars.VITE_GEMINI_API_KEY;
 
@@ -189,7 +189,7 @@ testVertexAI().then(() => {
   console.log('\n📋 Summary:');
   console.log('- Vertex AI Imagen is the preferred method (production-ready)');
   console.log('- Gemini API works as a fallback');
-  console.log('- Your BookGen app will try Vertex AI first, then Gemini');
+  console.log('- Your Omnigen app will try Vertex AI first, then Gemini');
   console.log('- Both methods should work for generating book covers');
 }).catch(error => {
   console.error('Test failed:', error);

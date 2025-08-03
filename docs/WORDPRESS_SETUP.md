@@ -1,6 +1,6 @@
 # WordPress Article Generator Setup Guide
 
-This guide will help you set up and use the WordPress Article Generator feature in the BookGen application.
+This guide will help you set up and use the WordPress Article Generator feature in the Omnigen application.
 
 ## Prerequisites
 
@@ -15,13 +15,13 @@ This guide will help you set up and use the WordPress Article Generator feature 
 1. Log into your WordPress admin dashboard
 2. Go to **Users** → **Profile**
 3. Scroll down to **Application Passwords**
-4. Enter a name for your application (e.g., "BookGen Article Generator")
+4. Enter a name for your application (e.g., "Omnigen Article Generator")
 5. Click **Add New Application Password**
 6. Copy the generated password (you won't be able to see it again)
 
 ### 2. Configure WordPress Connection
 
-1. In BookGen, navigate to the **Articles** tab
+1. In Omnigen, navigate to the **Articles** tab
 2. If you haven't connected to WordPress yet, you'll see the configuration form
 3. Enter your WordPress site URL (e.g., `https://yoursite.com`)
 4. Enter your WordPress username
@@ -106,4 +106,4 @@ If you encounter issues:
 3. Test your Gemini API key separately
 4. Check your WordPress site's error logs
 
-For additional help, refer to the main BookGen documentation or create an issue in the project repository. 
+For additional help, refer to the main Omnigen documentation or create an issue in the project repository.

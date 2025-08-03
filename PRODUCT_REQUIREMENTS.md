@@ -10,17 +10,17 @@
 
 ## 1. Overview
 
-The "Online Course Generator" is a new feature within Unstack that allows users to create comprehensive online courses from a simple prompt. For each chapter (or module), the feature will generate a blog article, a featured image, and a lesson plan. The lesson plan will include a script and text-to-speech audio, and will be exportable as a Google Slides presentation.
+The "Online Course Generator" is a new feature within Omnigen that allows users to create comprehensive online courses from a simple prompt. For each chapter (or module), the feature will generate a blog article, a featured image, and a lesson plan. The lesson plan will include a script and text-to-speech audio, and will be exportable as a Google Slides presentation.
 
 ## 2. Problem Statement
 
-Creating online courses is a time-consuming process that involves content creation, visual design, and lesson planning. Unstack can streamline this process by automating the generation of these materials, allowing creators to focus on delivering high-quality educational content.
+Creating online courses is a time-consuming process that involves content creation, visual design, and lesson planning. Omnigen can streamline this process by automating the generation of these materials, allowing creators to focus on delivering high-quality educational content.
 
 ## 3. Goals
 
 - To provide users with a powerful tool for creating online courses.
 - To reduce the time and effort required to create online course materials.
-- To enhance the value of Unstack by adding a new, in-demand feature.
+- To enhance the value of Omnigen by adding a new, in-demand feature.
 
 ## 4. User Personas
 

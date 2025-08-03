@@ -38,4 +38,4 @@ node_modules/
 
 # Google Cloud credentials
 *.json
-unstack-*.json
+omnigen-*.json
