@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { Menu, User, Settings, Globe } from 'lucide-react';
 import AuthWrapper from './components/AuthWrapper';
 import { supabase } from './lib/supabase';
+import { initializeAutomation } from './services/automationController';
 import BookSidebar from './components/BookSidebar';
 import BookPrompt from './components/BookPrompt';
 import OutlineView from './components/OutlineView';
@@ -13,12 +14,13 @@ import PersonaManagement from './components/PersonaManagement';
 import WordpressGenerator from './components/WordpressGenerator';
 import WordpressSettings from './components/WordpressSettings';
 import WordPressManagement from './components/WordPressManagement';
+import AutoPublishing from './components/AutoPublishing';
 import { Book, BookChapter, SubChapter, WritingPersona } from './types';
 import { saveBook, loadBook } from './services/bookService';
 import { getWordpressCredentials } from './services/wordpressService';
 
 function App() {
-  const [currentView, setCurrentView] = useState<'books' | 'articles' | 'personas' | 'wordpress'>('books');
+  const [currentView, setCurrentView] = useState<'books' | 'articles' | 'personas' | 'wordpress' | 'autopublish'>('books');
   const [currentStep, setCurrentStep] = useState<'prompt' | 'outline' | 'chapter' | 'edit' | 'personas'>('prompt');
   const [book, setBook] = useState<Book | null>(null);
   const [selectedChapter, setSelectedChapter] = useState<BookChapter | null>(null);
@@ -36,10 +38,17 @@ function App() {
 
   // Handle OAuth callback
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session) {
         // OAuth callback successful
         console.log('OAuth sign in successful');
+
+        // Initialize auto-publishing automation when user is authenticated
+        try {
+          await initializeAutomation();
+        } catch (error) {
+          console.error('Failed to initialize automation:', error);
+        }
       }
     });
 
@@ -243,7 +252,19 @@ function App() {
                   }`}
                 >
                   <Globe className="w-5 h-5" />
-                  <span>WordPress Publishing</span>
+                  <span>WordPress Setup</span>
+                </button>
+
+                <button
+                  onClick={() => setCurrentView('autopublish')}
+                  className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all duration-200 shadow-sm ${
+                    currentView === 'autopublish'
+                      ? 'bg-purple-600 text-white shadow-md'
+                      : 'bg-white text-gray-700 border border-gray-300 hover:bg-purple-50 hover:text-purple-600 hover:border-purple-300'
+                  }`}
+                >
+                  <Settings className="w-5 h-5" />
+                  <span>Auto-Publishing</span>
                 </button>
               </div>
 
@@ -317,6 +338,12 @@ function App() {
 
               {currentView === 'wordpress' && (
                 <WordPressManagement
+                  apiKeys={apiKeys}
+                />
+              )}
+
+              {currentView === 'autopublish' && (
+                <AutoPublishing
                   apiKeys={apiKeys}
                 />
               )}

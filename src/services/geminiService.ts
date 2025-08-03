@@ -450,3 +450,16 @@ export const generateArticle = async (topicTitle: string, topicDescription: stri
   const response = await callGeminiAPI(prompt, apiKey);
   return response.trim();
 };
+
+// Blog analysis function specifically for analyzing WordPress blog content
+export const analyzeBlogContentWithAI = async (analysisPrompt: string, apiKey: string): Promise<string> => {
+  try {
+    console.log('🤖 Calling Gemini API for blog analysis...');
+    const response = await callGeminiAPI(analysisPrompt, apiKey);
+    console.log('✅ Gemini API response received');
+    return response.trim();
+  } catch (error) {
+    console.error('Error in blog analysis AI call:', error);
+    throw new Error(`Blog analysis AI call failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+};

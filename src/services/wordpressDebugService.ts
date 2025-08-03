@@ -231,8 +231,8 @@ export class WordPressDebugger {
 
 // Helper function to test WordPress connection with detailed diagnostics
 export const debugWordPressConnection = async (site: Partial<WordPressSite>): Promise<WordPressDebugResult[]> => {
-  const debugger = new WordPressDebugger(site);
-  return await debugger.runFullDiagnostic();
+  const wpDebugger = new WordPressDebugger(site);
+  return await wpDebugger.runFullDiagnostic();
 };
 
 // Quick connection test (simplified version)

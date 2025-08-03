@@ -1,4 +1,4 @@
-import { generateContent } from './geminiService';
+import { analyzeBlogContentWithAI } from './geminiService';
 
 export interface BlogAnalysis {
   niche: string;
@@ -56,29 +56,50 @@ export const analyzeBlogContent = async (
     };
 
     // Get recent posts (last 50)
+    console.log('📡 Fetching recent posts...');
     const postsResponse = await fetch(`${wordPressSiteUrl}/wp-json/wp/v2/posts?per_page=50&status=publish`, {
       headers
     });
-    
+
     if (!postsResponse.ok) {
-      throw new Error(`Failed to fetch posts: ${postsResponse.status}`);
+      const errorText = await postsResponse.text();
+      console.error('Failed to fetch posts:', postsResponse.status, errorText);
+      throw new Error(`Failed to fetch posts: ${postsResponse.status} - ${errorText}`);
     }
-    
+
     const posts = await postsResponse.json();
+    console.log(`✅ Fetched ${posts.length} posts`);
     
     // Get categories
+    console.log('📡 Fetching categories...');
     const categoriesResponse = await fetch(`${wordPressSiteUrl}/wp-json/wp/v2/categories?per_page=100`, {
       headers
     });
     const categories = categoriesResponse.ok ? await categoriesResponse.json() : [];
-    
+    if (!categoriesResponse.ok) {
+      console.warn('Failed to fetch categories:', categoriesResponse.status);
+    } else {
+      console.log(`✅ Fetched ${categories.length} categories`);
+    }
+
     // Get tags
+    console.log('📡 Fetching tags...');
     const tagsResponse = await fetch(`${wordPressSiteUrl}/wp-json/wp/v2/tags?per_page=100`, {
       headers
     });
     const tags = tagsResponse.ok ? await tagsResponse.json() : [];
+    if (!tagsResponse.ok) {
+      console.warn('Failed to fetch tags:', tagsResponse.status);
+    } else {
+      console.log(`✅ Fetched ${tags.length} tags`);
+    }
 
     console.log(`📊 Found ${posts.length} posts, ${categories.length} categories, ${tags.length} tags`);
+
+    // Validate we have enough content to analyze
+    if (posts.length === 0) {
+      throw new Error('No published posts found. The blog needs at least one published post to analyze.');
+    }
 
     // Prepare content for AI analysis
     const contentSample = posts.slice(0, 10).map(post => ({
@@ -88,6 +109,8 @@ export const analyzeBlogContent = async (
       categories: post.categories,
       tags: post.tags
     }));
+
+    console.log(`🔍 Prepared ${contentSample.length} posts for analysis`);
 
     // Create analysis prompt
     const analysisPrompt = `
@@ -136,16 +159,26 @@ Focus on identifying the core niche, writing style, and content patterns to help
 `;
 
     console.log('🤖 Sending content to AI for analysis...');
-    
-    const aiResponse = await generateContent(analysisPrompt, apiKey);
+
+    const aiResponse = await analyzeBlogContentWithAI(analysisPrompt, apiKey);
     
     // Extract JSON from AI response
+    console.log('🔍 Parsing AI response...');
     const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
+      console.error('No JSON found in AI response:', aiResponse.substring(0, 500));
       throw new Error('Could not extract analysis data from AI response');
     }
-    
-    const analysis = JSON.parse(jsonMatch[0]);
+
+    let analysis;
+    try {
+      analysis = JSON.parse(jsonMatch[0]);
+      console.log('✅ Successfully parsed AI response');
+    } catch (parseError) {
+      console.error('Failed to parse JSON:', parseError);
+      console.error('JSON string:', jsonMatch[0].substring(0, 500));
+      throw new Error('Invalid JSON in AI response');
+    }
     
     // Enhance with actual WordPress data
     const enhancedAnalysis: BlogAnalysis = {
@@ -214,7 +247,7 @@ Make sure each article idea is unique, valuable, and perfectly aligned with the 
 `;
 
   try {
-    const response = await generateContent(ideaPrompt, apiKey);
+    const response = await analyzeBlogContentWithAI(ideaPrompt, apiKey);
     
     const jsonMatch = response.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
@@ -267,7 +300,7 @@ Make sure the content is high-quality, engaging, and perfectly matches the exist
 `;
 
   try {
-    const response = await generateContent(articlePrompt, apiKey);
+    const response = await analyzeBlogContentWithAI(articlePrompt, apiKey);
     
     const jsonMatch = response.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
@@ -356,7 +389,7 @@ Respond with JSON:
 }
 `;
     
-    const aiResponse = await generateContent(nichePrompt, apiKey);
+    const aiResponse = await analyzeBlogContentWithAI(nichePrompt, apiKey);
     const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
     
     if (jsonMatch) {

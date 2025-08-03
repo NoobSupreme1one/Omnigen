@@ -1,6 +1,6 @@
 import { ArticleTemplate, ScheduledArticle, WritingPersona } from '../types';
 import { generateContent } from './geminiService';
-import { generateBookCoverWithGoogleAI } from './coverService';
+import { generateBookCover } from './coverService';
 import { generateContentWithPersona } from './personaService';
 
 // Generate article content from template
@@ -116,7 +116,7 @@ export const generateFeaturedImage = async (
       status: 'draft' as const,
     };
     
-    const imageUrl = await generateBookCoverWithGoogleAI(mockBook, apiKey);
+    const imageUrl = await generateBookCover(mockBook, apiKey);
     return imageUrl;
     
   } catch (error) {
