@@ -3,6 +3,7 @@ import { Book, BookOpen, Plus, Trash2, Clock, CheckCircle2, Play } from 'lucide-
 import { Book as BookType } from '../types';
 import { loadAllBooks, deleteBook } from '../services/bookService';
 import { loadBook } from '../services/bookService';
+import PubHubLogo from './PubHubLogo';
 
 interface BookSidebarProps {
   isOpen: boolean;
@@ -103,12 +104,8 @@ const BookSidebar: React.FC<BookSidebarProps> = ({
         <div className="flex flex-col h-full">
           {/* Header */}
           <div className="p-6 border-b border-gray-200">
-            <div className="flex items-center gap-3 mb-4">
-              <img 
-                src="/generated-image.png" 
-                alt="Unstack Logo" 
-                className="h-8 w-auto"
-              />
+            <div className="flex flex-col gap-3 mb-4">
+              <PubHubLogo size="md" />
               <h2 className="text-lg font-semibold text-gray-800">My Books</h2>
             </div>
             

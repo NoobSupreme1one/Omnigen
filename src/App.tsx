@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
 import { useEffect } from 'react';
-import { Menu, User, Settings, Globe } from 'lucide-react';
+import { Menu, User, Settings, Globe, BookOpen, Rss } from 'lucide-react';
 import AuthWrapper from './components/AuthWrapper';
 import { supabase } from './lib/supabase';
 import { initializeAutomation } from './services/automationController';
+
 import BookSidebar from './components/BookSidebar';
+import BlogSidebar from './components/BlogSidebar';
+import BlogManagement from './components/BlogManagement';
 import BookPrompt from './components/BookPrompt';
 import OutlineView from './components/OutlineView';
 import ChapterView from './components/ChapterView';
@@ -20,11 +23,21 @@ import { saveBook, loadBook } from './services/bookService';
 import { getWordpressCredentials } from './services/wordpressService';
 
 function App() {
-  const [currentView, setCurrentView] = useState<'books' | 'articles' | 'personas' | 'wordpress' | 'autopublish'>('books');
-  const [currentStep, setCurrentStep] = useState<'prompt' | 'outline' | 'chapter' | 'edit' | 'personas'>('prompt');
+  // Top-level navigation: 'books' or 'blogs'
+  const [mainSection, setMainSection] = useState<'books' | 'blogs'>('books');
+
+  // Books section state
+  const [currentStep, setCurrentStep] = useState<'prompt' | 'outline' | 'chapter' | 'edit'>('prompt');
   const [book, setBook] = useState<Book | null>(null);
   const [selectedChapter, setSelectedChapter] = useState<BookChapter | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [booksSidebarOpen, setBooksSidebarOpen] = useState(false);
+
+  // Blogs section state
+  const [selectedBlogId, setSelectedBlogId] = useState<string | null>(null);
+  const [blogsSidebarOpen, setBlogsSidebarOpen] = useState(false);
+  const [blogView, setBlogView] = useState<'overview' | 'settings' | 'autopublish' | 'articles'>('overview');
+
+  // Shared state
   const [selectedPersona, setSelectedPersona] = useState<WritingPersona | null>(null);
   const [wordpressConnected, setWordpressConnected] = useState(false);
   
@@ -186,14 +199,25 @@ function App() {
   return (
     <AuthWrapper>
       <div className="flex h-screen">
-        {/* Sidebar */}
-        <BookSidebar
-          isOpen={sidebarOpen}
-          onToggle={() => setSidebarOpen(!sidebarOpen)}
-          onSelectBook={handleSelectBook}
-          onNewBook={handleNewBookFromSidebar}
-          currentBookId={book?.id}
-        />
+        {/* Sidebar - Books or Blogs */}
+        {mainSection === 'books' && (
+          <BookSidebar
+            isOpen={booksSidebarOpen}
+            onToggle={() => setBooksSidebarOpen(!booksSidebarOpen)}
+            onSelectBook={handleSelectBook}
+            onNewBook={handleNewBookFromSidebar}
+            currentBookId={book?.id}
+          />
+        )}
+
+        {mainSection === 'blogs' && (
+          <BlogSidebar
+            isOpen={blogsSidebarOpen}
+            onToggle={() => setBlogsSidebarOpen(!blogsSidebarOpen)}
+            onSelectBlog={setSelectedBlogId}
+            selectedBlogId={selectedBlogId}
+          />
+        )}
 
         {/* Main Content */}
         <div className="flex-1 flex flex-col overflow-hidden">
@@ -201,83 +225,48 @@ function App() {
           <header className="bg-white shadow-sm border-b border-gray-200 px-4 py-4 lg:px-8">
             <div className="flex items-center justify-between">
               {/* Left side - Navigation */}
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-6">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setMainSection('books')}
+                    className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all duration-200 shadow-sm ${
+                      mainSection === 'books'
+                        ? 'bg-blue-600 text-white shadow-md'
+                        : 'bg-white text-gray-700 border border-gray-300 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300'
+                    }`}
+                  >
+                    <BookOpen className="w-5 h-5" />
+                    <span>Books</span>
+                  </button>
+
+                  <button
+                    onClick={() => setMainSection('blogs')}
+                    className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all duration-200 shadow-sm ${
+                      mainSection === 'blogs'
+                        ? 'bg-purple-600 text-white shadow-md'
+                        : 'bg-white text-gray-700 border border-gray-300 hover:bg-purple-50 hover:text-purple-600 hover:border-purple-300'
+                    }`}
+                  >
+                    <Rss className="w-5 h-5" />
+                    <span>Blogs</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Right side - Mobile menu toggle */}
+              <div className="flex items-center gap-2">
                 <button
-                  onClick={() => setSidebarOpen(!sidebarOpen)}
+                  onClick={() => {
+                    if (mainSection === 'books') {
+                      setBooksSidebarOpen(!booksSidebarOpen);
+                    } else {
+                      setBlogsSidebarOpen(!blogsSidebarOpen);
+                    }
+                  }}
                   className="lg:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors duration-200"
                 >
                   <Menu className="w-5 h-5 text-gray-600" />
                 </button>
-
-                <button
-                  onClick={() => setCurrentView('books')}
-                  className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all duration-200 shadow-sm ${
-                    currentView === 'books'
-                      ? 'bg-blue-600 text-white shadow-md'
-                      : 'bg-white text-gray-700 border border-gray-300 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300'
-                  }`}
-                >
-                  <span>Books</span>
-                </button>
-
-                <button
-                  onClick={() => setCurrentView('articles')}
-                  className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all duration-200 shadow-sm ${
-                    currentView === 'articles'
-                      ? 'bg-purple-600 text-white shadow-md'
-                      : 'bg-white text-gray-700 border border-gray-300 hover:bg-purple-50 hover:text-purple-600 hover:border-purple-300'
-                  }`}
-                >
-                  <span>Articles</span>
-                </button>
-
-                <button
-                  onClick={() => setCurrentView('personas')}
-                  className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all duration-200 shadow-sm ${
-                    currentView === 'personas'
-                      ? 'bg-indigo-600 text-white shadow-md'
-                      : 'bg-white text-gray-700 border border-gray-300 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-300'
-                  }`}
-                >
-                  <User className="w-5 h-5" />
-                  <span>Writing Personas</span>
-                </button>
-
-                <button
-                  onClick={() => setCurrentView('wordpress')}
-                  className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all duration-200 shadow-sm ${
-                    currentView === 'wordpress'
-                      ? 'bg-green-600 text-white shadow-md'
-                      : 'bg-white text-gray-700 border border-gray-300 hover:bg-green-50 hover:text-green-600 hover:border-green-300'
-                  }`}
-                >
-                  <Globe className="w-5 h-5" />
-                  <span>WordPress Setup</span>
-                </button>
-
-                <button
-                  onClick={() => setCurrentView('autopublish')}
-                  className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all duration-200 shadow-sm ${
-                    currentView === 'autopublish'
-                      ? 'bg-purple-600 text-white shadow-md'
-                      : 'bg-white text-gray-700 border border-gray-300 hover:bg-purple-50 hover:text-purple-600 hover:border-purple-300'
-                  }`}
-                >
-                  <Settings className="w-5 h-5" />
-                  <span>Auto-Publishing</span>
-                </button>
-              </div>
-
-              {/* Right side - empty for now, can add user menu later */}
-              <div className="flex items-center gap-2">
-                {currentView === 'wordpress' && (
-                  <button
-                    onClick={() => setCurrentStep('settings' as any)}
-                    className="p-2 rounded-lg hover:bg-gray-100 transition-colors duration-200"
-                  >
-                    <Settings className="w-5 h-5 text-gray-600" />
-                  </button>
-                )}
               </div>
             </div>
           </header>
@@ -285,11 +274,11 @@ function App() {
           {/* Content */}
           <main className="flex-1 overflow-y-auto p-4 lg:p-8">
             <div className="max-w-6xl mx-auto">
-              {currentView === 'books' && (
+              {mainSection === 'books' && (
                 <>
-                  {currentStep === 'prompt' && <BookPrompt onGenerate={handleGenerate} />}
+                  {currentStep === 'prompt' && <BookPrompt onGenerate={handleGenerate} apiKeys={apiKeys} />}
                   {currentStep === 'outline' && book && (
-                    <OutlineView 
+                    <OutlineView
                       book={book}
                       onChapterClick={handleChapterClick}
                       onNewBook={handleNewBook}
@@ -315,36 +304,14 @@ function App() {
                 </>
               )}
 
-              {currentView === 'articles' && (
-                <>
-                  {wordpressConnected ? (
-                    <WordpressGenerator 
-                      apiKeys={apiKeys} 
-                      persona={selectedPersona} 
-                    />
-                  ) : (
-                    <WordpressSettings onConnect={() => setWordpressConnected(true)} />
-                  )}
-                </>
-              )}
-
-              {currentView === 'personas' && (
-                <PersonaManagement
+              {mainSection === 'blogs' && (
+                <BlogManagement
+                  selectedBlogId={selectedBlogId}
+                  blogView={blogView}
+                  setBlogView={setBlogView}
                   apiKeys={apiKeys}
-                  onPersonaSelect={setSelectedPersona}
-                  selectedPersonaId={selectedPersona?.id}
-                />
-              )}
-
-              {currentView === 'wordpress' && (
-                <WordPressManagement
-                  apiKeys={apiKeys}
-                />
-              )}
-
-              {currentView === 'autopublish' && (
-                <AutoPublishing
-                  apiKeys={apiKeys}
+                  selectedPersona={selectedPersona}
+                  setSelectedPersona={setSelectedPersona}
                 />
               )}
             </div>

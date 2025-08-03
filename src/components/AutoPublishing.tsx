@@ -5,7 +5,9 @@ import {
   createAutoPublishingSchedule,
   getUserAutoPublishingSchedules,
   analyzeBlogForSchedule,
-  generateNextArticle
+  generateNextArticle,
+  getGeneratedArticlesForSchedule,
+  publishSampleArticle
 } from '../services/autoPublishingService';
 import { getUserWordPressSites } from '../services/wordpressService';
 import { quickNicheDetection } from '../services/blogAnalysisService';
@@ -24,7 +26,11 @@ import {
   AlertCircle,
   Loader,
   Brain,
-  Calendar
+  Calendar,
+  FileText,
+  Eye,
+  Send,
+  Image
 } from 'lucide-react';
 
 interface AutoPublishingProps {
@@ -43,6 +49,12 @@ const AutoPublishing: React.FC<AutoPublishingProps> = ({ apiKeys }) => {
   const [generating, setGenerating] = useState<string | null>(null);
   const [automationStatus, setAutomationStatus] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // New state for articles and publishing
+  const [generatedArticles, setGeneratedArticles] = useState<{[scheduleId: string]: GeneratedArticle[]}>({});
+  const [publishing, setPublishing] = useState<string | null>(null);
+  const [showArticleModal, setShowArticleModal] = useState(false);
+  const [selectedArticle, setSelectedArticle] = useState<GeneratedArticle | null>(null);
 
   // Form state
   const [selectedSiteId, setSelectedSiteId] = useState('');
@@ -69,18 +81,26 @@ const AutoPublishing: React.FC<AutoPublishingProps> = ({ apiKeys }) => {
 
   const loadData = async () => {
     try {
+      console.log('🔄 Starting to load auto-publishing data...');
       setLoading(true);
       setError(null);
 
+      console.log('📊 Loading schedules and sites...');
       const [schedulesData, sitesData] = await Promise.all([
         getUserAutoPublishingSchedules(),
         getUserWordPressSites()
       ]);
 
+      console.log('✅ Loaded schedules:', schedulesData.length, 'sites:', sitesData.length);
       setSchedules(schedulesData);
       setSites(sitesData);
+
+      // Load generated articles for each schedule
+      console.log('📝 Loading generated articles...');
+      await loadGeneratedArticles(schedulesData);
+      console.log('✅ Finished loading all data');
     } catch (error) {
-      console.error('Error loading data:', error);
+      console.error('❌ Error loading data:', error);
 
       // Handle specific error types
       if (error instanceof Error) {
@@ -97,7 +117,32 @@ const AutoPublishing: React.FC<AutoPublishingProps> = ({ apiKeys }) => {
       setSchedules([]);
       setSites([]);
     } finally {
+      console.log('🏁 Setting loading to false');
       setLoading(false);
+    }
+  };
+
+  const loadGeneratedArticles = async (schedulesList: AutoPublishingSchedule[]) => {
+    try {
+      console.log('📝 Loading articles for', schedulesList.length, 'schedules');
+      const articlesData: {[scheduleId: string]: GeneratedArticle[]} = {};
+
+      for (const schedule of schedulesList) {
+        try {
+          console.log(`📄 Loading articles for schedule ${schedule.id}`);
+          const articles = await getGeneratedArticlesForSchedule(schedule.id);
+          console.log(`✅ Loaded ${articles.length} articles for schedule ${schedule.id}`);
+          articlesData[schedule.id] = articles;
+        } catch (error) {
+          console.error(`❌ Error loading articles for schedule ${schedule.id}:`, error);
+          articlesData[schedule.id] = [];
+        }
+      }
+
+      console.log('📝 Setting generated articles data:', articlesData);
+      setGeneratedArticles(articlesData);
+    } catch (error) {
+      console.error('❌ Error loading generated articles:', error);
     }
   };
 
@@ -126,28 +171,34 @@ const AutoPublishing: React.FC<AutoPublishingProps> = ({ apiKeys }) => {
 
   const handleCreateSchedule = async () => {
     if (!selectedSiteId || !apiKeys.gemini) return;
-    
+
     try {
-      const schedule = await createAutoPublishingSchedule(
+      // Create schedule with sample article generation
+      const result = await createAutoPublishingSchedule(
         selectedSiteId,
         frequency,
         timeOfDay,
-        timezone
+        timezone,
+        apiKeys.gemini
       );
-      
+
       setShowCreateModal(false);
       setSelectedSiteId('');
       setDetectedNiche(null);
-      loadData();
+
+      // Reload data to show the new schedule and sample article
+      await loadData();
 
       // Notify automation controller about new schedule
       await automationController.onScheduleCreated();
 
-      // Automatically analyze the blog
-      setTimeout(() => {
-        handleAnalyzeBlog(schedule.id);
-      }, 1000);
-      
+      // Show success message with sample article info
+      if (result.sampleArticle) {
+        alert(`Schedule created successfully! A sample article "${result.sampleArticle.title}" has been generated and is ready to publish.`);
+      } else {
+        alert('Schedule created successfully!');
+      }
+
     } catch (error) {
       console.error('Error creating schedule:', error);
       alert('Failed to create auto-publishing schedule');
@@ -190,6 +241,29 @@ const AutoPublishing: React.FC<AutoPublishingProps> = ({ apiKeys }) => {
       alert('Article generation failed. Please try again.');
     } finally {
       setGenerating(null);
+    }
+  };
+
+  const handleViewArticle = (article: GeneratedArticle) => {
+    setSelectedArticle(article);
+    setShowArticleModal(true);
+  };
+
+  const handlePublishArticle = async (articleId: string) => {
+    setPublishing(articleId);
+
+    try {
+      await publishSampleArticle(articleId);
+
+      // Reload articles to update status
+      await loadGeneratedArticles(schedules);
+
+      alert('Article published successfully!');
+    } catch (error) {
+      console.error('Error publishing article:', error);
+      alert('Failed to publish article');
+    } finally {
+      setPublishing(null);
     }
   };
 
@@ -312,6 +386,69 @@ const AutoPublishing: React.FC<AutoPublishingProps> = ({ apiKeys }) => {
                     <p className="text-sm text-yellow-700 mt-1">
                       Analyze the blog content to understand its niche and style before generating articles.
                     </p>
+                  </div>
+                )}
+
+                {/* Generated Articles Section */}
+                {generatedArticles[schedule.id] && generatedArticles[schedule.id].length > 0 && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <FileText className="w-4 h-4 text-blue-600" />
+                      <span className="font-medium text-blue-800">Generated Articles ({generatedArticles[schedule.id].length})</span>
+                    </div>
+                    <div className="space-y-2">
+                      {generatedArticles[schedule.id].slice(0, 3).map((article) => (
+                        <div key={article.id} className="flex items-center justify-between bg-white rounded p-2">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-medium text-sm text-gray-900 truncate">{article.title}</h4>
+                              {article.featured_image_url && (
+                                <Image className="w-3 h-3 text-green-600" title="Has featured image" />
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 text-xs text-gray-500">
+                              <span className={`px-1.5 py-0.5 rounded text-xs ${
+                                article.status === 'published' ? 'bg-green-100 text-green-700' :
+                                article.status === 'ready' ? 'bg-blue-100 text-blue-700' :
+                                article.status === 'failed' ? 'bg-red-100 text-red-700' :
+                                'bg-gray-100 text-gray-700'
+                              }`}>
+                                {article.status}
+                              </span>
+                              <span>{new Date(article.created_at).toLocaleDateString()}</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => handleViewArticle(article)}
+                              className="p-1 text-blue-600 hover:bg-blue-100 rounded"
+                              title="View article"
+                            >
+                              <Eye className="w-3 h-3" />
+                            </button>
+                            {article.status === 'ready' && (
+                              <button
+                                onClick={() => handlePublishArticle(article.id)}
+                                disabled={publishing === article.id}
+                                className="p-1 text-green-600 hover:bg-green-100 rounded disabled:opacity-50"
+                                title="Publish article"
+                              >
+                                {publishing === article.id ? (
+                                  <Loader className="w-3 h-3 animate-spin" />
+                                ) : (
+                                  <Send className="w-3 h-3" />
+                                )}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                      {generatedArticles[schedule.id].length > 3 && (
+                        <p className="text-xs text-blue-600 text-center">
+                          +{generatedArticles[schedule.id].length - 3} more articles
+                        </p>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -468,6 +605,99 @@ const AutoPublishing: React.FC<AutoPublishingProps> = ({ apiKeys }) => {
               >
                 Create Schedule
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Article Viewing Modal */}
+      {showArticleModal && selectedArticle && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
+            <div className="flex items-center justify-between p-6 border-b">
+              <div className="flex-1">
+                <h3 className="text-xl font-semibold text-gray-900">{selectedArticle.title}</h3>
+                <div className="flex items-center gap-4 mt-2 text-sm text-gray-600">
+                  <span className={`px-2 py-1 rounded text-xs ${
+                    selectedArticle.status === 'published' ? 'bg-green-100 text-green-700' :
+                    selectedArticle.status === 'ready' ? 'bg-blue-100 text-blue-700' :
+                    selectedArticle.status === 'failed' ? 'bg-red-100 text-red-700' :
+                    'bg-gray-100 text-gray-700'
+                  }`}>
+                    {selectedArticle.status}
+                  </span>
+                  <span>Category: {selectedArticle.category}</span>
+                  <span>Created: {new Date(selectedArticle.created_at).toLocaleDateString()}</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {selectedArticle.status === 'ready' && (
+                  <button
+                    onClick={() => handlePublishArticle(selectedArticle.id)}
+                    disabled={publishing === selectedArticle.id}
+                    className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+                  >
+                    {publishing === selectedArticle.id ? (
+                      <Loader className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Send className="w-4 h-4" />
+                    )}
+                    {publishing === selectedArticle.id ? 'Publishing...' : 'Publish Now'}
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    setShowArticleModal(false);
+                    setSelectedArticle(null);
+                  }}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+              {/* Featured Image */}
+              {selectedArticle.featured_image_url && (
+                <div className="mb-6">
+                  <h4 className="font-medium text-gray-900 mb-2">Featured Image</h4>
+                  <img
+                    src={selectedArticle.featured_image_url}
+                    alt={selectedArticle.title}
+                    className="w-full max-w-md rounded-lg border"
+                  />
+                </div>
+              )}
+
+              {/* Article Content */}
+              <div className="space-y-4">
+                <div>
+                  <h4 className="font-medium text-gray-900 mb-2">Excerpt</h4>
+                  <p className="text-gray-700 bg-gray-50 p-3 rounded-lg">{selectedArticle.excerpt}</p>
+                </div>
+
+                <div>
+                  <h4 className="font-medium text-gray-900 mb-2">Content</h4>
+                  <div
+                    className="prose max-w-none text-gray-700 bg-gray-50 p-4 rounded-lg"
+                    dangerouslySetInnerHTML={{ __html: selectedArticle.content }}
+                  />
+                </div>
+
+                {selectedArticle.tags && selectedArticle.tags.length > 0 && (
+                  <div>
+                    <h4 className="font-medium text-gray-900 mb-2">Tags</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedArticle.tags.map((tag, index) => (
+                        <span key={index} className="px-2 py-1 bg-blue-100 text-blue-800 text-sm rounded">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { BookOpen, Sparkles, Wand2, User, ChevronDown, Loader, RefreshCw } from 'lucide-react';
+import { BookOpen, Sparkles, Wand2, User, ChevronDown, Loader, RefreshCw, Plus } from 'lucide-react';
 import { generateBookOutline } from '../services/geminiService';
 import { Book, WritingPersona } from '../types';
 import { getUserProfile } from '../services/userService';
 import { getUserPersonas, generateContentWithPersona } from '../services/personaService';
+import PersonaCreationModal from './PersonaCreationModal';
+import PubHubLogo from './PubHubLogo';
 
 interface BookPromptProps {
-  onBookGenerated: (book: Book) => void;
+  onGenerate: (book: Book) => void;
   apiKeys: {gemini: string; perplexity: string};
 }
 
@@ -74,6 +76,7 @@ const BookPrompt: React.FC<BookPromptProps> = ({ onBookGenerated, apiKeys }) => 
   const [personas, setPersonas] = useState<WritingPersona[]>([]);
   const [selectedPersona, setSelectedPersona] = useState<WritingPersona | null>(null);
   const [showPersonaDropdown, setShowPersonaDropdown] = useState(false);
+  const [showPersonaModal, setShowPersonaModal] = useState(false);
   const [generateAudio, setGenerateAudio] = useState(false);
 
   // Load user's default author name and personas on component mount
@@ -98,6 +101,19 @@ const BookPrompt: React.FC<BookPromptProps> = ({ onBookGenerated, apiKeys }) => 
 
     loadUserData();
   }, []);
+
+  const handlePersonaCreated = async (newPersona: WritingPersona) => {
+    // Refresh the personas list
+    try {
+      const updatedPersonas = await getUserPersonas();
+      setPersonas(updatedPersonas);
+      setSelectedPersona(newPersona);
+      setShowPersonaModal(false);
+      setShowPersonaDropdown(false);
+    } catch (error) {
+      console.error('Error refreshing personas:', error);
+    }
+  };
 
   const ROMANCE_SUBGENRES = [
     'Contemporary',
@@ -304,13 +320,11 @@ const BookPrompt: React.FC<BookPromptProps> = ({ onBookGenerated, apiKeys }) => 
     <div className="max-w-3xl mx-auto">
       <div className="bg-white rounded-2xl shadow-xl p-8">
         <div className="text-center mb-8">
-          <img 
-            src="/generated-image.png" 
-            alt="Unstack Logo" 
-            className="h-16 w-auto mx-auto mb-4"
-          />
+          <div className="flex justify-center mb-4">
+            <PubHubLogo size="lg" />
+          </div>
           <h2 className="text-2xl font-bold text-gray-800 mb-2">Create Your eBook</h2>
-          <p className="text-gray-600">Describe the book you want to create and let Unstack's AI generate a comprehensive outline</p>
+          <p className="text-gray-600">Describe the book you want to create and let PubHub's AI generate a comprehensive outline</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -399,6 +413,23 @@ const BookPrompt: React.FC<BookPromptProps> = ({ onBookGenerated, apiKeys }) => 
                         className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded-md text-gray-600"
                       >
                         No persona (default style)
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowPersonaModal(true);
+                          setShowPersonaDropdown(false);
+                        }}
+                        className="w-full text-left px-3 py-2 hover:bg-blue-50 rounded-md text-blue-600 border-b border-gray-200 mb-2"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Plus className="w-4 h-4 text-blue-500" />
+                          <div>
+                            <div className="font-medium">Create New Persona</div>
+                            <div className="text-xs text-blue-500">Analyze writing style and create persona</div>
+                          </div>
+                        </div>
                       </button>
                       {personas.map((persona) => (
                         <button
@@ -612,6 +643,16 @@ const BookPrompt: React.FC<BookPromptProps> = ({ onBookGenerated, apiKeys }) => 
         </form>
 
       </div>
+
+      {/* Persona Creation Modal */}
+      {showPersonaModal && (
+        <PersonaCreationModal
+          isOpen={showPersonaModal}
+          onClose={() => setShowPersonaModal(false)}
+          onPersonaCreated={handlePersonaCreated}
+          apiKeys={apiKeys}
+        />
+      )}
     </div>
   );
 };
