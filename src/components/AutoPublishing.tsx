@@ -214,7 +214,7 @@ const AutoPublishing: React.FC<AutoPublishingProps> = ({ apiKeys }) => {
     setAnalyzing(scheduleId);
     
     try {
-      await analyzeBlogForSchedule(scheduleId, apiKeys.gemini);
+      await analyzeBlogForSchedule(scheduleId);
       await loadData(); // Refresh to show analysis results
     } catch (error) {
       console.error('Blog analysis failed:', error);
@@ -233,7 +233,7 @@ const AutoPublishing: React.FC<AutoPublishingProps> = ({ apiKeys }) => {
     setGenerating(scheduleId);
     
     try {
-      await generateNextArticle(scheduleId, apiKeys.gemini);
+      await generateNextArticle(scheduleId);
       alert('Article generated successfully! It will be published at the scheduled time.');
       loadData();
     } catch (error) {

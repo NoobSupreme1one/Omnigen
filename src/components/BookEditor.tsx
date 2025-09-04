@@ -86,7 +86,7 @@ const BookEditor: React.FC<BookEditorProps> = ({
     setIsProcessing(true);
     try {
       if (editMode === 'whole-book') {
-        const newBook = await editWholeBook(editingBook, editPrompt, apiKeys.gemini);
+        const newBook = await editWholeBook(editingBook, editPrompt);
         setChangePreview({
           id: Date.now().toString(),
           type: 'whole-book',
@@ -102,8 +102,7 @@ const BookEditor: React.FC<BookEditorProps> = ({
           const newContent = await editContent(
             subChapter.content,
             selectedText,
-            editPrompt,
-            apiKeys.gemini
+            editPrompt
           );
           
           setChangePreview({

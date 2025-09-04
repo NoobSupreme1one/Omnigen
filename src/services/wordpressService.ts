@@ -7,7 +7,7 @@ import {
   SEOSettings,
   ScheduleConfig
 } from '../types';
-import { supabase } from '../lib/supabase';
+// import { supabase } from '../lib/supabase'; // Disabled - Supabase removed
 
 export interface WordpressCredentials {
   url: string;

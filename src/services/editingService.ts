@@ -1,6 +1,7 @@
 import { Book } from '../types';
+import { generateContent } from './openRouterService';
 
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent';
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent';
 
 interface GeminiResponse {
   candidates: {
@@ -37,19 +38,19 @@ const callGeminiAPI = async (prompt: string, apiKey: string): Promise<string> =>
           safetySettings: [
             {
               category: "HARM_CATEGORY_HARASSMENT",
-              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+              threshold: "BLOCK_NONE"
             },
             {
               category: "HARM_CATEGORY_HATE_SPEECH",
-              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+              threshold: "BLOCK_NONE"
             },
             {
               category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+              threshold: "BLOCK_NONE"
             },
             {
               category: "HARM_CATEGORY_DANGEROUS_CONTENT",
-              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+              threshold: "BLOCK_NONE"
             }
           ]
         })
@@ -100,11 +101,9 @@ const callGeminiAPI = async (prompt: string, apiKey: string): Promise<string> =>
 export const editContent = async (
   originalContent: string,
   selectedText: string,
-  editPrompt: string,
-  apiKey: string
+  editPrompt: string
 ): Promise<string> => {
-  const prompt = `
-You are an expert editor helping to improve book content. You will be given:
+  const prompt = `You are an expert editor helping to improve book content. You will be given:
 1. The original content of a section
 2. A specific portion of text that was selected
 3. Instructions on how to edit that selected text
@@ -120,17 +119,14 @@ SELECTED TEXT TO EDIT:
 EDIT INSTRUCTIONS:
 ${editPrompt}
 
-IMPORTANT: Return the COMPLETE modified content with the selected text edited according to the instructions. Do not add any explanations or commentary, just return the updated content.
-`;
+IMPORTANT: Return the COMPLETE modified content with the selected text edited according to the instructions. Do not add any explanations or commentary, just return the updated content.`;
 
-  const response = await callGeminiAPI(prompt, apiKey);
-  return response.trim();
+  return await generateContent(prompt, undefined, 2048, 0.7);
 };
 
 export const editWholeBook = async (
   book: Book,
-  editPrompt: string,
-  apiKey: string
+  editPrompt: string
 ): Promise<Book> => {
   // For whole book editing, we'll edit each chapter's content
   const updatedChapters = [];
@@ -166,7 +162,7 @@ Return ONLY the improved content, no explanations or commentary.
 `;
 
           try {
-            const editedContent = await callGeminiAPI(prompt, apiKey);
+            const editedContent = await generateContent(prompt, undefined);
             updatedSubChapters.push({
               ...subChapter,
               content: editedContent.trim()

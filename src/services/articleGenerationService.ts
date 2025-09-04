@@ -1,5 +1,5 @@
 import { ArticleTemplate, ScheduledArticle, WritingPersona } from '../types';
-import { generateContent } from './geminiService';
+import { generateContent as openRouterGenerateContent } from './openRouterService';
 import { generateBookCover } from './coverService';
 import { generateContentWithPersona } from './personaService';
 
@@ -59,7 +59,7 @@ Format the response as JSON:
     if (template.writingPersona) {
       generatedContent = await generateContentWithPersona(enhancedPrompt, template.writingPersona, apiKey);
     } else {
-      generatedContent = await generateContent(enhancedPrompt, apiKey);
+      generatedContent = await openRouterGenerateContent(enhancedPrompt, apiKey);
     }
     
     // Extract JSON from response
@@ -150,7 +150,7 @@ Format as JSON:
 `;
 
   try {
-    const response = await generateContent(seoPrompt, apiKey);
+    const response = await openRouterGenerateContent(seoPrompt, apiKey);
     
     const jsonMatch = response.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
@@ -263,7 +263,7 @@ Format as JSON:
 `;
 
   try {
-    const response = await generateContent(previewPrompt, apiKey);
+    const response = await openRouterGenerateContent(previewPrompt, apiKey);
     
     const jsonMatch = response.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {

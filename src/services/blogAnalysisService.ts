@@ -1,4 +1,4 @@
-import { analyzeBlogContentWithAI } from './geminiService';
+import { generateContent } from './openRouterService';
 
 export interface BlogAnalysis {
   niche: string;
@@ -41,8 +41,7 @@ export interface ArticleGenerationPrompt {
 export const analyzeBlogContent = async (
   wordPressSiteUrl: string,
   username: string,
-  appPassword: string,
-  apiKey: string
+  appPassword: string
 ): Promise<BlogAnalysis> => {
   
   try {
@@ -160,7 +159,7 @@ Focus on identifying the core niche, writing style, and content patterns to help
 
     console.log('🤖 Sending content to AI for analysis...');
 
-    const aiResponse = await analyzeBlogContentWithAI(analysisPrompt, apiKey);
+    const aiResponse = await generateContent(analysisPrompt, undefined, 2048, 0.7);
     
     // Extract JSON from AI response
     console.log('🔍 Parsing AI response...');
@@ -208,8 +207,7 @@ Focus on identifying the core niche, writing style, and content patterns to help
 // Generate article ideas based on blog analysis
 export const generateArticleIdeas = async (
   analysis: BlogAnalysis,
-  count: number,
-  apiKey: string
+  count: number
 ): Promise<ArticleGenerationPrompt[]> => {
   
   const ideaPrompt = `
@@ -247,7 +245,7 @@ Make sure each article idea is unique, valuable, and perfectly aligned with the 
 `;
 
   try {
-    const response = await analyzeBlogContentWithAI(ideaPrompt, apiKey);
+    const response = await generateContent(ideaPrompt, undefined, 2048, 0.7);
     
     const jsonMatch = response.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
@@ -266,8 +264,7 @@ Make sure each article idea is unique, valuable, and perfectly aligned with the 
 // Generate a single article based on the blog's style
 export const generateBlogStyleArticle = async (
   prompt: ArticleGenerationPrompt,
-  analysis: BlogAnalysis,
-  apiKey: string
+  analysis: BlogAnalysis
 ): Promise<{title: string, content: string, excerpt: string}> => {
   
   const articlePrompt = `
@@ -300,7 +297,7 @@ Make sure the content is high-quality, engaging, and perfectly matches the exist
 `;
 
   try {
-    const response = await analyzeBlogContentWithAI(articlePrompt, apiKey);
+    const response = await generateContent(articlePrompt, undefined, 3072, 0.7);
     
     const jsonMatch = response.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
@@ -353,8 +350,7 @@ const calculateAverageWordCount = (posts: any[]): number => {
 export const quickNicheDetection = async (
   wordPressSiteUrl: string,
   username: string,
-  appPassword: string,
-  apiKey: string
+  appPassword: string
 ): Promise<{niche: string, confidence: number, topics: string[]}> => {
   
   try {
@@ -389,7 +385,7 @@ Respond with JSON:
 }
 `;
     
-    const aiResponse = await analyzeBlogContentWithAI(nichePrompt, apiKey);
+    const aiResponse = await generateContent(nichePrompt, undefined, 1024, 0.7);
     const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
     
     if (jsonMatch) {

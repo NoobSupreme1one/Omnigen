@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { BookOpen, Sparkles, Wand2, User, ChevronDown, Loader, RefreshCw, Plus } from 'lucide-react';
 import { generateBookOutline } from '../services/geminiService';
+import { generateBookDescription } from '../services/perplexityService';
 import { Book, WritingPersona } from '../types';
 import { getUserProfile } from '../services/userService';
 import { getUserPersonas, generateContentWithPersona } from '../services/personaService';
@@ -61,7 +62,7 @@ const HEAT_LEVELS = [
   }
 ];
 
-const BookPrompt: React.FC<BookPromptProps> = ({ onBookGenerated, apiKeys }) => {
+const BookPrompt: React.FC<BookPromptProps> = ({ onGenerate, apiKeys }) => {
   const [prompt, setPrompt] = useState('');
   const [author, setAuthor] = useState('');
   const [genre, setGenre] = useState('');
@@ -173,79 +174,51 @@ const BookPrompt: React.FC<BookPromptProps> = ({ onBookGenerated, apiKeys }) => 
       return;
     }
 
+    if (!apiKeys.perplexity) {
+      alert('Perplexity API key is required to generate descriptions. Please check your settings.');
+      return;
+    }
+
     setIsGeneratingDescription(true);
     try {
+      console.log('🚀 Generating description with Perplexity...');
+
       const actualTone = tone === 'Other' ? customTone : tone;
-      
-      let descriptionPrompt = `Generate a compelling book description for a ${genre} book`;
-      
-      if (subGenre && isRomance) {
-        descriptionPrompt += ` in the ${subGenre} sub-genre`;
-      }
-      
-      if (actualTone) {
-        descriptionPrompt += ` with a ${actualTone.toLowerCase()} tone`;
-      }
-      
-      if (perspective) {
-        const perspectiveLabels = {
-          'first': 'first person',
-          'third-limited': 'third person limited',
-          'third-omniscient': 'third person omniscient',
-          'second': 'second person'
-        };
-        descriptionPrompt += ` written in ${perspectiveLabels[perspective as keyof typeof perspectiveLabels]}`;
-      }
-      
-      if (heatLevel && isRomance) {
-        const heatLevelLabels = {
-          'clean': 'clean/wholesome',
-          'sweet': 'sweet',
-          'sensual': 'sensual',
-          'steamy': 'steamy',
-          'spicy': 'spicy',
-          'explicit': 'explicit'
-        };
-        descriptionPrompt += ` with ${heatLevelLabels[heatLevel as keyof typeof heatLevelLabels]} heat level`;
-      }
-      
-      if (targetAudience) {
-        descriptionPrompt += ` for ${targetAudience}`;
-      }
-      
-      descriptionPrompt += `. The description should be 2-3 sentences that outline what the book will cover, its main themes, and what readers can expect to learn or experience. Make it engaging and specific to the genre and settings provided.`;
 
-      // Use the same Gemini API call structure from generateBookOutline
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKeys.gemini}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{
-              text: descriptionPrompt
-            }]
-          }],
-          generationConfig: {
-            temperature: 0.7,
-            topK: 1,
-            topP: 1,
-            maxOutputTokens: 2048,
-          }
-        })
-      });
+      const generatedDescription = await generateBookDescription(
+        genre,
+        subGenre && isRomance ? subGenre : undefined,
+        actualTone,
+        perspective,
+        heatLevel && isRomance ? heatLevel : undefined,
+        targetAudience,
+        apiKeys.perplexity
+      );
 
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status}`);
+      if (!generatedDescription) {
+        throw new Error('No description generated. The content may have been filtered.');
       }
 
-      const data = await response.json();
-      const generatedDescription = data.candidates[0]?.content?.parts[0]?.text || '';
       setPrompt(generatedDescription.trim());
+      console.log('✅ Description generated successfully with Perplexity');
+
     } catch (error) {
-      console.error('Error generating description:', error);
-      alert('Failed to generate description. Please try again.');
+      console.error('❌ Error generating description with Perplexity:', error);
+      let errorMessage = 'Failed to generate description. Please try again.';
+
+      if (error instanceof Error) {
+        if (error.message.includes('rate limit') || error.message.includes('429')) {
+          errorMessage = 'Rate limit exceeded. Please wait a few minutes before trying again.';
+        } else if (error.message.includes('Invalid API key') || error.message.includes('401')) {
+          errorMessage = 'Invalid Perplexity API key. Please check your API key in settings.';
+        } else if (error.message.includes('forbidden') || error.message.includes('403')) {
+          errorMessage = 'API access forbidden. Please check your Perplexity API permissions.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+
+      alert(errorMessage);
     } finally {
       setIsGeneratingDescription(false);
     }
@@ -283,7 +256,7 @@ const BookPrompt: React.FC<BookPromptProps> = ({ onBookGenerated, apiKeys }) => 
 
       // For Online Course genre, pass the generateAudio option
       if (isOnlineCourse) {
-        const book = await generateBookOutline(enhancedPrompt, genre, subGenre, targetAudience, heatLevel, perspective, finalAuthor, apiKeys.gemini, generateAudio);
+        const book = await generateBookOutline(enhancedPrompt, genre, subGenre, targetAudience, heatLevel, perspective, finalAuthor, undefined, generateAudio);
         
         // Add persona reference to the book
         const bookWithPersona = {
@@ -292,9 +265,9 @@ const BookPrompt: React.FC<BookPromptProps> = ({ onBookGenerated, apiKeys }) => 
           writingPersona: selectedPersona || undefined
         };
 
-        onBookGenerated(bookWithPersona);
+        onGenerate(bookWithPersona);
       } else {
-        const book = await generateBookOutline(enhancedPrompt, genre, subGenre, targetAudience, heatLevel, perspective, finalAuthor, apiKeys.gemini);
+        const book = await generateBookOutline(enhancedPrompt, genre, subGenre, targetAudience, heatLevel, perspective, finalAuthor, undefined);
 
         // Add persona reference to the book
         const bookWithPersona = {
@@ -303,7 +276,7 @@ const BookPrompt: React.FC<BookPromptProps> = ({ onBookGenerated, apiKeys }) => 
           writingPersona: selectedPersona || undefined
         };
 
-        onBookGenerated(bookWithPersona);
+        onGenerate(bookWithPersona);
       }
     } catch (error) {
       console.error('Error generating book outline:', error);

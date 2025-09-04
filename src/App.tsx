@@ -1,30 +1,19 @@
 import React, { useState } from 'react';
 import { useEffect } from 'react';
-import { Menu, User, Settings, Globe, BookOpen, Rss } from 'lucide-react';
-import AuthWrapper from './components/AuthWrapper';
-import { supabase } from './lib/supabase';
-import { initializeAutomation } from './services/automationController';
+import { Menu, BookOpen } from 'lucide-react';
 
 import BookSidebar from './components/BookSidebar';
-import BlogSidebar from './components/BlogSidebar';
-import BlogManagement from './components/BlogManagement';
 import BookPrompt from './components/BookPrompt';
 import OutlineView from './components/OutlineView';
 import ChapterView from './components/ChapterView';
 import OnlineCourseChapterView from './components/OnlineCourseChapterView';
 import BookEditor from './components/BookEditor';
-import PersonaManagement from './components/PersonaManagement';
-import WordpressGenerator from './components/WordpressGenerator';
-import WordpressSettings from './components/WordpressSettings';
-import WordPressManagement from './components/WordPressManagement';
-import AutoPublishing from './components/AutoPublishing';
-import { Book, BookChapter, SubChapter, WritingPersona } from './types';
+import { Book, BookChapter } from './types';
 import { saveBook, loadBook } from './services/bookService';
-import { getWordpressCredentials } from './services/wordpressService';
 
 function App() {
-  // Top-level navigation: 'books' or 'blogs'
-  const [mainSection, setMainSection] = useState<'books' | 'blogs'>('books');
+  // Simplified to just books section
+  const [mainSection] = useState<'books'>('books');
 
   // Books section state
   const [currentStep, setCurrentStep] = useState<'prompt' | 'outline' | 'chapter' | 'edit'>('prompt');
@@ -32,41 +21,10 @@ function App() {
   const [selectedChapter, setSelectedChapter] = useState<BookChapter | null>(null);
   const [booksSidebarOpen, setBooksSidebarOpen] = useState(false);
 
-  // Blogs section state
-  const [selectedBlogId, setSelectedBlogId] = useState<string | null>(null);
-  const [blogsSidebarOpen, setBlogsSidebarOpen] = useState(false);
-  const [blogView, setBlogView] = useState<'overview' | 'settings' | 'autopublish' | 'articles'>('overview');
 
-  // Shared state
-  const [selectedPersona, setSelectedPersona] = useState<WritingPersona | null>(null);
-  const [wordpressConnected, setWordpressConnected] = useState(false);
   
   
-  useEffect(() => {
-    const creds = getWordpressCredentials('test-user');
-    if (creds) {
-      setWordpressConnected(true);
-    }
-  }, []);
 
-  // Handle OAuth callback
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session) {
-        // OAuth callback successful
-        console.log('OAuth sign in successful');
-
-        // Initialize auto-publishing automation when user is authenticated
-        try {
-          await initializeAutomation();
-        } catch (error) {
-          console.error('Failed to initialize automation:', error);
-        }
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
 
   const apiKeys = {
     gemini: import.meta.env.VITE_GEMINI_API_KEY || '',
@@ -131,7 +89,7 @@ function App() {
         } else {
           setCurrentStep('outline');
         }
-        setSidebarOpen(false);
+        setBooksSidebarOpen(false);
       }
     } catch (error) {
       console.error('Error loading book:', error);
@@ -143,7 +101,7 @@ function App() {
     setBook(null);
     setSelectedChapter(null);
     setCurrentStep('prompt');
-    setSidebarOpen(false);
+    setBooksSidebarOpen(false);
   };
 
   const handleEditBook = () => {
@@ -197,7 +155,6 @@ function App() {
   };
 
   return (
-    <AuthWrapper>
       <div className="flex h-screen">
         {/* Sidebar - Books or Blogs */}
         {mainSection === 'books' && (
@@ -318,8 +275,7 @@ function App() {
           </main>
         </div>
       </div>
-    </AuthWrapper>
-  );
+    );
 }
 
 export default App;

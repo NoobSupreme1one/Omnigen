@@ -132,7 +132,6 @@ const PersonaManagement: React.FC<PersonaManagementProps> = ({
         uploadForm.name,
         uploadForm.description,
         uploadForm.sampleText,
-        apiKeys.gemini,
         uploadForm.authorName
       );
 

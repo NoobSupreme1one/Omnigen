@@ -17,7 +17,7 @@ import {
   generateSEOTags 
 } from './articleGenerationService';
 import { publishArticle } from './wordpressService';
-import { supabase } from '../lib/supabase';
+// import { supabase } from '../lib/supabase'; // Disabled - Supabase removed
 
 // Main scheduling processor - this would run as a background job
 export class ArticleScheduler {

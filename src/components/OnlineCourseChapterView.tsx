@@ -24,7 +24,7 @@ const OnlineCourseChapterView: React.FC<OnlineCourseChapterViewProps> = ({ chapt
   const handleGenerateArticle = async () => {
     setIsGeneratingArticle(true);
     try {
-      const article = await generateBlogArticle(chapter.title, chapter.description, apiKeys.gemini);
+      const article = await generateBlogArticle(chapter.title, chapter.description);
       setBlogArticle(article);
     } catch (error) {
       console.error('Error generating blog article:', error);
@@ -37,7 +37,7 @@ const OnlineCourseChapterView: React.FC<OnlineCourseChapterViewProps> = ({ chapt
   const handleGenerateLessonPlan = async () => {
     setIsGeneratingLessonPlan(true);
     try {
-      const plan = await generateLessonPlan(chapter.title, chapter.description, apiKeys.gemini);
+      const plan = await generateLessonPlan(chapter.title, chapter.description);
       setLessonPlan(JSON.parse(plan));
     } catch (error) {
       console.error('Error generating lesson plan:', error);
@@ -50,7 +50,7 @@ const OnlineCourseChapterView: React.FC<OnlineCourseChapterViewProps> = ({ chapt
   const handleGenerateImage = async () => {
     setIsGeneratingImage(true);
     try {
-      const imageUrl = await generateFeaturedImage(chapter.title, chapter.description, apiKeys.gemini);
+      const imageUrl = await generateFeaturedImage(chapter.title, chapter.description);
       setFeaturedImage(imageUrl);
     } catch (error) {
       console.error('Error generating featured image:', error);

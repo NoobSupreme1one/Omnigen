@@ -33,7 +33,7 @@ const ChapterView: React.FC<ChapterViewProps> = ({
   const generateOutline = async () => {
     setIsGeneratingOutline(true);
     try {
-      const outline = await generateChapterOutline(localChapter.title, localChapter.description, apiKeys.gemini);
+      const outline = await generateChapterOutline(localChapter.title, localChapter.description);
       const updatedChapter = { ...localChapter, subChapters: outline };
       setLocalChapter(updatedChapter);
       onUpdateChapter(updatedChapter);
@@ -61,7 +61,7 @@ const ChapterView: React.FC<ChapterViewProps> = ({
       if (withResearch) {
         content = await researchAndGenerate(subChapter.title, subChapter.description, apiKeys);
       } else {
-        content = await generateContent(subChapter.title, subChapter.description, apiKeys.gemini);
+        content = await generateContent(subChapter.title, subChapter.description);
       }
 
       const completedSubChapter = { 

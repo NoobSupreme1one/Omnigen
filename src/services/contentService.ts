@@ -1,7 +1,135 @@
 import { Book, BookChapter, SubChapter } from '../types';
-import { generateChapterOutline, generateContent, generateContentWithHeatLevel } from './geminiService';
-import { researchTopic } from './perplexityService';
+import { generateContent as openRouterGenerateContent, researchTopic } from './openRouterService';
 import { v4 as uuidv4 } from 'uuid';
+
+// Generate chapter outline
+export const generateChapterOutline = async (
+  chapterTitle: string,
+  chapterDescription: string
+): Promise<SubChapter[]> => {
+  const prompt = `Generate a detailed outline for a book chapter with the following details:
+
+Chapter Title: ${chapterTitle}
+Chapter Description: ${chapterDescription}
+
+Please create 3-5 sections for this chapter. Return the response as a JSON array in this format:
+
+[
+  {
+    "title": "Section Title",
+    "description": "Detailed description of what this section covers"
+  }
+]
+
+Make sure each section flows logically and contributes to the overall chapter narrative.
+
+IMPORTANT: Return ONLY the JSON array, no additional text or formatting.`;
+
+  try {
+    const response = await openRouterGenerateContent(prompt, undefined, 1024, 0.7);
+    
+    // Try to parse JSON from response
+    const jsonMatch = response.match(/\[[\s\S]*\]/);
+    if (jsonMatch) {
+      const sections = JSON.parse(jsonMatch[0]);
+      return sections.map((section: any, index: number) => ({
+        id: uuidv4(),
+        title: section.title,
+        description: section.description,
+        content: '',
+        status: 'pending' as const,
+        orderIndex: index
+      }));
+    }
+
+    // Fallback: create basic sections
+    return [{
+      id: uuidv4(),
+      title: `${chapterTitle} - Part 1`,
+      description: chapterDescription,
+      content: '',
+      status: 'pending' as const,
+      orderIndex: 0
+    }];
+  } catch (error) {
+    console.warn('Failed to parse chapter outline JSON, using fallback');
+    return [{
+      id: uuidv4(),
+      title: `${chapterTitle} - Part 1`,
+      description: chapterDescription,
+      content: '',
+      status: 'pending' as const,
+      orderIndex: 0
+    }];
+  }
+};
+
+// Generate content for a section
+export const generateContent = async (
+  sectionTitle: string,
+  sectionDescription: string
+): Promise<string> => {
+  const prompt = `Write comprehensive, high-quality content for the following section:
+
+Section Title: ${sectionTitle}
+Section Description: ${sectionDescription}
+
+Requirements:
+- Structure the content with clear paragraphs
+- Make it suitable for an eBook format
+- Do not include markdown formatting or section headers
+Please write the content now:`;
+
+  return await openRouterGenerateContent(prompt, undefined);
+};
+
+// Generate content with heat level for romance books
+export const generateContentWithHeatLevel = async (
+  sectionTitle: string,
+  sectionDescription: string,
+  heatLevel: string,
+  perspective: string = ''
+): Promise<string> => {
+  const heatLevelDescriptions = {
+    'clean': 'Clean/Wholesome romance with no explicit sexual content, focusing on emotional connection, meaningful glances, hugs, and light kissing.',
+    'sweet': 'Sweet romance with closed-door intimate scenes that are implied rather than explicit, focusing on emotional development.',
+    'sensual': 'Sensual romance with on-page love scenes using euphemistic language, emphasizing emotional aspects over explicit details.',
+    'steamy': 'Steamy romance with explicit sexual content and detailed intimate scenes throughout the story.',
+    'spicy': 'Spicy/Erotic romance with heavy emphasis on sexual activity, detailed descriptions, and multiple intimate scenes.',
+    'explicit': 'Explicit romance with highly detailed and graphic sexual content, exploring characters\' desires in depth.'
+  };
+
+  const heatLevelPrompt = heatLevelDescriptions[heatLevel as keyof typeof heatLevelDescriptions] || heatLevel;
+
+  let perspectivePrompt = '';
+  if (perspective) {
+    const perspectiveDescriptions = {
+      'first': 'Write in first person narrative (using "I" perspective).',
+      'third-limited': 'Write in third person limited narrative (using "he/she" perspective), following one character\'s viewpoint.',
+      'third-omniscient': 'Write in third person omniscient narrative (using "he/she" perspective), with access to multiple characters\' thoughts.',
+      'second': 'Write in second person narrative (using "you" perspective).'
+    };
+    
+    perspectivePrompt = `\nNarrative Perspective: ${perspectiveDescriptions[perspective as keyof typeof perspectiveDescriptions] || perspective}`;
+  }
+
+  const prompt = `Write comprehensive, high-quality content for the following section:
+
+Section Title: ${sectionTitle}
+Section Description: ${sectionDescription}
+
+Heat Level Guidelines: ${heatLevelPrompt}
+${perspectivePrompt}
+
+Requirements:
+- Structure the content with clear paragraphs
+- Make it suitable for an eBook format
+- Adhere to the specified heat level throughout
+- Do not include markdown formatting or section headers
+Please write the content now:`;
+
+  return await openRouterGenerateContent(prompt, undefined);
+};
 
 export const researchAndGenerate = async (
   title: string,
@@ -19,7 +147,7 @@ ${researchData}
 
 Use the above research to create comprehensive, well-informed content.`;
   
-  return await generateContent(title, enhancedDescription, apiKeys.gemini);
+  return await openRouterGenerateContent(enhancedDescription, apiKeys.perplexity);
 };
 
 export const generateAllContent = async (
@@ -79,7 +207,7 @@ export const generateAllContentWithResearch = async (
     
     // Generate chapter outline if not exists
     if (!chapter.subChapters) {
-      const outline = await generateChapterOutline(chapter.title, chapter.description, apiKeys.gemini);
+      const outline = await generateChapterOutline(chapter.title, chapter.description);
       chapter.subChapters = outline;
       onProgress({ ...updatedBook });
     }
@@ -169,8 +297,7 @@ export const convertRomanceHeatLevel = async (
           subChapter.title, 
           subChapter.description, 
           newHeatLevel,
-          originalBook.perspective || '',
-          apiKeys.gemini
+          originalBook.perspective || ''
         );
         
         subChapter.content = content;

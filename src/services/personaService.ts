@@ -1,6 +1,6 @@
 import { WritingPersona, PersonaAnalysis, PersonaPreferences } from '../types';
-import { supabase } from '../lib/supabase';
-import { generateContent } from './geminiService';
+// import { supabase } from '../lib/supabase'; // Disabled - Supabase removed
+import { generateContent } from './openRouterService';
 
 // Create a new writing persona
 export const createPersona = async (
@@ -39,8 +39,7 @@ export const createPersona = async (
 
 // Analyze writing sample and create persona
 export const analyzeWritingSample = async (
-  sampleText: string,
-  apiKey: string
+  sampleText: string
 ): Promise<PersonaAnalysis> => {
   const analysisPrompt = `
 Analyze this writing sample and extract detailed style characteristics. Provide a comprehensive analysis in the following JSON format:
@@ -69,7 +68,7 @@ ${sampleText}
 Analyze the writing style, voice, structure, vocabulary level, sentence patterns, dialogue approach, descriptive techniques, and any unique characteristics. Be specific and detailed in your analysis.`;
 
   try {
-    const response = await generateContent(analysisPrompt, apiKey);
+    const response = await generateContent(analysisPrompt, undefined);
     
     // Extract JSON from response
     const jsonMatch = response.match(/\{[\s\S]*\}/);
@@ -90,14 +89,13 @@ export const createPersonaFromSample = async (
   name: string,
   description: string,
   sampleText: string,
-  apiKey: string,
   authorName?: string
 ): Promise<WritingPersona> => {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('User not authenticated');
 
   // Analyze the writing sample
-  const analysis = await analyzeWritingSample(sampleText, apiKey);
+  const analysis = await analyzeWritingSample(sampleText);
 
   // Create preferences based on analysis
   const preferences: PersonaPreferences = {
@@ -222,35 +220,43 @@ export const togglePersonaFavorite = async (id: string): Promise<WritingPersona>
 // Generate content with persona style
 export const generateContentWithPersona = async (
   prompt: string,
-  persona: WritingPersona,
-  apiKey: string
+  persona: WritingPersona
 ): Promise<string> => {
-  let enhancedPrompt = prompt;
+  const personaPrompt = `You are writing in the style of ${persona.name}.
 
-  // Add persona style instructions
-  if (persona.analysis_results) {
-    const analysis = persona.analysis_results;
-    enhancedPrompt += `\n\nWrite in the following style:
-- Sentence length: ${analysis.writingStyle.sentenceLength}
-- Vocabulary level: ${analysis.writingStyle.vocabulary}
-- Tone: ${analysis.writingStyle.tone.join(', ')}
-- Voice characteristics: ${analysis.writingStyle.voiceCharacteristics.join(', ')}
-- Paragraph style: ${analysis.structuralElements.paragraphLength}
-- Pacing: ${analysis.structuralElements.pacing}`;
+Persona Description: ${persona.description}
+${persona.author_name ? `Author Name: ${persona.author_name}` : ''}
 
-    if (analysis.strengthsAndQuirks.length > 0) {
-      enhancedPrompt += `\n- Key characteristics: ${analysis.strengthsAndQuirks.join(', ')}`;
-    }
-  }
+${persona.preferences ? `
+Writing Preferences:
+- Preferred Genres: ${persona.preferences.preferredGenres?.join(', ') || 'Any'}
+- Target Audience: ${persona.preferences.targetAudience?.join(', ') || 'General'}
+- Avoided Topics: ${persona.preferences.avoidedTopics?.join(', ') || 'None'}
+- Special Instructions: ${persona.preferences.specialInstructions || 'None'}
+` : ''}
 
-  // Add preferences
-  if (persona.preferences.specialInstructions) {
-    enhancedPrompt += `\n\nAdditional instructions: ${persona.preferences.specialInstructions}`;
-  }
+${persona.sample_text ? `
+Sample of this persona's writing style:
+"${persona.sample_text}"
 
-  if (persona.preferences.avoidedTopics.length > 0) {
-    enhancedPrompt += `\n\nAvoid these topics: ${persona.preferences.avoidedTopics.join(', ')}`;
-  }
+Please match this writing style, tone, and voice.
+` : ''}
 
-  return generateContent(enhancedPrompt, apiKey);
+${persona.analysis_results ? `
+Style Analysis:
+- Tone: ${persona.analysis_results.writingStyle?.tone?.join(', ') || 'Natural'}
+- Vocabulary: ${persona.analysis_results.writingStyle?.vocabulary || 'Moderate'}
+- Sentence Length: ${persona.analysis_results.writingStyle?.sentenceLength || 'Varied'}
+- Pacing: ${persona.analysis_results.structuralElements?.pacing || 'Moderate'}
+
+${persona.analysis_results.strengthsAndQuirks?.length > 0 ? `
+Key characteristics: ${persona.analysis_results.strengthsAndQuirks.join(', ')}
+` : ''}
+` : ''}
+
+Now, please write content for the following prompt while maintaining this persona's unique voice and style:
+
+${prompt}`;
+
+  return await generateContent(personaPrompt, undefined, 2048, 0.8);
 };

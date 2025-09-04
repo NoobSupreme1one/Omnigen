@@ -1,128 +1,17 @@
 import { Book, BookChapter, SubChapter } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import { generateOnlineCourse } from './onlineCourseService';
+import * as PerplexityService from './perplexityService';
 
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent';
+// This service now uses OpenRouter API for all text generation
+// Maintaining the same function signatures for backward compatibility
 
-interface GeminiResponse {
-  candidates: {
-    content: {
-      parts: {
-        text: string;
-      }[];
-    };
-  }[];
-}
+import { generateContent as openRouterGenerateContent } from './openRouterService';
 
+// Legacy function - now redirects to OpenRouter
 const callGeminiAPI = async (prompt: string, apiKey: string): Promise<string> => {
-  const maxRetries = 5;
-  
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{
-              text: prompt
-            }]
-          }],
-          generationConfig: {
-            temperature: 0.7,
-            topK: 1,
-            topP: 1,
-            maxOutputTokens: 2048,
-          },
-          safetySettings: [
-            {
-              category: "HARM_CATEGORY_HARASSMENT",
-              threshold: "BLOCK_MEDIUM_AND_ABOVE"
-            },
-            {
-              category: "HARM_CATEGORY_HATE_SPEECH",
-              threshold: "BLOCK_MEDIUM_AND_ABOVE"
-            },
-            {
-              category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-              threshold: "BLOCK_MEDIUM_AND_ABOVE"
-            },
-            {
-              category: "HARM_CATEGORY_DANGEROUS_CONTENT",
-              threshold: "BLOCK_MEDIUM_AND_ABOVE"
-            }
-          ]
-        })
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Gemini API Error Response:', errorText);
-        
-        // Check if it's a quota exhaustion error
-        if (response.status === 429) {
-          try {
-            const errorData = JSON.parse(errorText);
-            if (errorData.error?.status === "RESOURCE_EXHAUSTED") {
-              throw new Error('Daily quota exceeded for Gemini API. Please wait 24 hours for quota reset or upgrade your Google Cloud billing plan. Visit https://ai.google.dev/gemini-api/docs/rate-limits for more information.');
-            }
-          } catch (parseError) {
-            // If we can't parse the error, fall through to retry logic
-            if (parseError instanceof Error && parseError.message.includes('Daily quota exceeded')) {
-              throw parseError;
-            }
-          }
-        
-          // For other 429 errors, don't retry if we've already tried multiple times
-          if (attempt >= 2) {
-            throw new Error('API rate limit exceeded. Please try again later or check your API quota.');
-          }
-        }
-        
-        // If it's a rate limit error (429), retry with exponential backoff
-        if (response.status === 429 && attempt < maxRetries) {
-          const delay = Math.pow(2, attempt) * 1000; // 1s, 2s, 4s, 8s, 16s
-          console.log(`Rate limit hit. Retrying in ${delay}ms... (attempt ${attempt + 1}/${maxRetries + 1})`);
-          await new Promise(resolve => setTimeout(resolve, delay));
-          continue;
-        }
-        
-        throw new Error(`Gemini API error: ${response.status} - ${errorText}`);
-      }
-
-      const data: GeminiResponse = await response.json();
-      console.log('Gemini API Response:', data);
-      
-      if (!data.candidates || data.candidates.length === 0) {
-        throw new Error('No candidates returned from Gemini API');
-      }
-      
-      return data.candidates[0]?.content?.parts[0]?.text || '';
-    } catch (error) {
-      // If this was our last attempt, re-throw the error
-      if (attempt >= maxRetries) {
-        console.error('Error calling Gemini API after all retries:', error);
-        throw error;
-      }
-      
-      // For network errors and other non-HTTP errors, also retry
-      if (error instanceof TypeError && error.message.includes('fetch')) {
-        const delay = Math.pow(2, attempt) * 1000;
-        console.log(`Network error. Retrying in ${delay}ms... (attempt ${attempt + 1}/${maxRetries + 1})`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-        continue;
-      }
-      
-      // For other errors, throw immediately
-      console.error('Error calling Gemini API:', error);
-      throw error;
-    }
-  }
-  
-  // This should never be reached, but TypeScript needs it
-  throw new Error('Maximum retries exceeded');
+  console.log('🔄 Redirecting Gemini API call to OpenRouter...');
+  return await openRouterGenerateContent(prompt, apiKey, 2048, 0.7);
 };
 
 /**
@@ -254,7 +143,7 @@ export const generateBookOutline = async (
 
   const fullPrompt = genre === 'Online Course Generator' ? coursePrompt : bookPrompt;
 
-  const response = await callGeminiAPI(fullPrompt, apiKey);
+  const response = await openRouterGenerateContent(fullPrompt, apiKey, 4096, 0.8);
   
   try {
     // Clean the response to extract JSON
@@ -303,34 +192,61 @@ export const generateChapterOutline = async (
   chapterDescription: string,
   apiKey: string
 ): Promise<SubChapter[]> => {
-  const prompt = `\nCreate a detailed outline for the following chapter:\n\nChapter Title: ${chapterTitle}\nChapter Description: ${chapterDescription}\n\nPlease provide a response in the following JSON format:\n{\n  "sections": [\n    {\n      "title": "Section Title",\n      "description": "Detailed description of what this section will cover (2-3 sentences)"\n    }\n  ]\n}\n\nGenerate 4-8 sections that comprehensively break down this chapter. Each section should be substantial enough to warrant its own content generation.\n\nIMPORTANT: Return ONLY the JSON object, no additional text or formatting.\n`;
+  const prompt = `Generate a detailed outline for a book chapter with the following details:
 
-  const response = await callGeminiAPI(prompt, apiKey);
-  
+Chapter Title: ${chapterTitle}
+Chapter Description: ${chapterDescription}
+
+Please create 3-5 sections for this chapter. Return the response as a JSON array in this format:
+
+[
+  {
+    "title": "Section Title",
+    "description": "Detailed description of what this section covers"
+  }
+]
+
+Make sure each section flows logically and contributes to the overall chapter narrative.
+
+IMPORTANT: Return ONLY the JSON array, no additional text or formatting.`;
+
   try {
-    // Clean the response to extract JSON
-    let cleanResponse = response.trim();
-    cleanResponse = cleanResponse.replace(/```json\s*|\s*```/g, '');
-    cleanResponse = cleanResponse.replace(/```\s*|\s*```/g, '');
+    const response = await openRouterGenerateContent(prompt, apiKey, 1024, 0.7);
     
-    const jsonMatch = cleanResponse.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      console.error('No JSON found in response:', response);
-      throw new Error('No valid JSON found in response');
+    // Try to parse JSON from response
+    const jsonMatch = response.match(/\[[\s\S]*\]/);
+    if (jsonMatch) {
+      const sections = JSON.parse(jsonMatch[0]);
+      return sections.map((section: any) => ({
+        id: uuidv4(),
+        title: section.title,
+        description: section.description,
+        content: '',
+        status: 'pending' as const,
+        orderIndex: 0
+      }));
     }
-    
-    const outlineData = JSON.parse(jsonMatch[0]);
-    
-    return outlineData.sections.map((section: any, index: number) => ({
+
+    // Fallback: create basic sections
+    return [{
       id: uuidv4(),
-      title: section.title,
-      description: section.description,
-      status: 'pending'
-    }));
+      title: `${chapterTitle} - Part 1`,
+      description: chapterDescription,
+      content: '',
+      status: 'pending' as const,
+      orderIndex: 0
+    }];
   } catch (error) {
-    console.error('Error parsing chapter outline:', error);
-    console.error('Raw response:', response);
-    throw new Error('Failed to parse chapter outline from AI response. Please try again.');
+    console.error('Error generating chapter outline:', error);
+    // Return a default structure if generation fails
+    return [{
+      id: uuidv4(),
+      title: `${chapterTitle} - Part 1`,
+      description: chapterDescription,
+      content: '',
+      status: 'pending' as const,
+      orderIndex: 0
+    }];
   }
 };
 
@@ -339,44 +255,81 @@ export const generateContent = async (
   sectionDescription: string,
   apiKey: string
 ): Promise<string> => {
-  const prompt = `\nWrite comprehensive, high-quality content for the following section:\n\nSection Title: ${sectionTitle}\nSection Description: ${sectionDescription}\n\nRequirements:\n- Structure the content with clear paragraphs\n- Make it suitable for an eBook format\n- Do not include markdown formatting or section headers\nPlease write the content now:\n`;
+  const prompt = `Write comprehensive, high-quality content for the following section:
 
-  const response = await callGeminiAPI(prompt, apiKey);
-  return response.trim();
+Section Title: ${sectionTitle}
+Section Description: ${sectionDescription}
+
+Requirements:
+- Structure the content with clear paragraphs
+- Make it suitable for an eBook format
+- Do not include markdown formatting or section headers
+Please write the content now:`;
+
+  return await openRouterGenerateContent(prompt, apiKey);
 };
 
 export const generateBlogArticle = async (
   chapterTitle: string,
-  chapterDescription: string,
-  apiKey: string
+  chapterDescription: string
 ): Promise<string> => {
-  const prompt = `\nWrite a comprehensive, high-quality blog article for the following chapter:\n\nChapter Title: ${chapterTitle}\nChapter Description: ${chapterDescription}\n\nRequirements:\n- Structure the content with a clear introduction, body, and conclusion.\n- Use headings and subheadings to organize the content.\n- Write in an engaging and informative tone.\n- The article should be at least 800 words.\n- Do not include markdown formatting.\nPlease write the content now:\n`;
+  const prompt = `Write a comprehensive, high-quality blog article for the following chapter:
 
-  const response = await callGeminiAPI(prompt, apiKey);
-  return response.trim();
+Chapter Title: ${chapterTitle}
+Chapter Description: ${chapterDescription}
+
+Requirements:
+- Structure the content with a clear introduction, body, and conclusion
+- Use headings and subheadings to organize the content
+- Write in an engaging and informative tone
+- The article should be at least 800 words
+- Do not include markdown formatting
+- Make it SEO-friendly and engaging for readers
+
+Please write the complete article now:`;
+
+  return await openRouterGenerateContent(prompt, undefined, 3072, 0.7);
 };
 
 export const generateLessonPlan = async (
   chapterTitle: string,
-  chapterDescription: string,
-  apiKey: string
+  chapterDescription: string
 ): Promise<string> => {
-  const prompt = `\nCreate a detailed lesson plan and script for a 15-20 minute presentation on the following topic:\n\nChapter Title: ${chapterTitle}\nChapter Description: ${chapterDescription}\n\nThe output should be in JSON format with the following structure:\n{\n  "title": "Presentation Title",\n  "slides": [\n    {\n      "title": "Slide Title",\n      "content": "Bulleted list of key points for the slide.",\n      "script": "The full script for this slide."\n    }\n  ]\n}\n\nGenerate 5-7 slides.\n\nIMPORTANT: Return ONLY the JSON object, no additional text or formatting.\n`;
+  const prompt = `Create a detailed lesson plan and script for a 15-20 minute presentation on the following topic:
 
-  const response = await callGeminiAPI(prompt, apiKey);
-  
+Chapter Title: ${chapterTitle}
+Chapter Description: ${chapterDescription}
+
+The output should be in JSON format with the following structure:
+{
+  "title": "Presentation Title",
+  "slides": [
+    {
+      "title": "Slide Title",
+      "content": "Bulleted list of key points for the slide.",
+      "script": "The full script for this slide."
+    }
+  ]
+}
+
+Generate 5-7 slides.
+
+IMPORTANT: Return ONLY the JSON object, no additional text or formatting.`;
+
+  const response = await openRouterGenerateContent(prompt, undefined, 2048, 0.7);
+
   try {
     // Clean the response to extract JSON
     let cleanResponse = response.trim();
     cleanResponse = cleanResponse.replace(/```json\s*|\s*```/g, '');
     cleanResponse = cleanResponse.replace(/```\s*|\s*```/g, '');
-    
+
     const jsonMatch = cleanResponse.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       console.error('No JSON found in response:', response);
       throw new Error('No valid JSON found in response');
     }
-    
+
     return jsonMatch[0];
   } catch (error) {
     console.error('Error parsing lesson plan:', error);
@@ -417,47 +370,98 @@ export const generateContentWithHeatLevel = async (
 
   const prompt = `\nWrite comprehensive, high-quality content for the following section:\n\nSection Title: ${sectionTitle}\nSection Description: ${sectionDescription}\n\nHeat Level Guidelines: ${heatLevelPrompt}\n${perspectivePrompt}\n\nRequirements:\n- Structure the content with clear paragraphs\n- Make it suitable for an eBook format\n- Adhere to the specified heat level throughout\n- Do not include markdown formatting or section headers\nPlease write the content now:\n`;
 
-  const response = await callGeminiAPI(prompt, apiKey);
-  return response.trim();
+  return await openRouterGenerateContent(prompt, apiKey);
 };
 
 export const analyzeContentAndGenerateTopics = async (content: string, apiKey: string): Promise<any> => {
-  try {
-    const prompt = `\nPlease analyze the following content from a WordPress blog. Based on the analysis, generate a list of 5 new, relevant, and SEO-friendly blog post topics.\n\nContent:\n${content}\n\nPlease provide a response in the following JSON format:\n{\n  "analysis": {\n    "writingStyle": "...",\n    "tone": "...",\n    "commonTopics": "...",\n    "seoPatterns": "..."\n  },\n  "suggestedTopics": [\n    {\n      "title": "...",\n      "description": "..."\n    }\n  ]\n}\n\nIMPORTANT: Return ONLY the JSON object, no additional text or formatting.\n`;
+  const prompt = `Please analyze the following content from a WordPress blog. Based on the analysis, generate a list of 5 new, relevant, and SEO-friendly blog post topics.
 
-    const response = await callGeminiAPI(prompt, apiKey);
-    
+Content:
+${content}
+
+Please provide a response in the following JSON format:
+{
+  "analysis": {
+    "writingStyle": "...",
+    "tone": "...",
+    "commonTopics": "...",
+    "seoPatterns": "..."
+  },
+  "suggestedTopics": [
+    {
+      "title": "...",
+      "description": "..."
+    }
+  ]
+}
+
+IMPORTANT: Return ONLY the JSON object, no additional text or formatting.`;
+
+  try {
+    const response = await openRouterGenerateContent(prompt, undefined, 2048, 0.7);
+
+    // Clean the response to extract JSON
     let cleanResponse = response.trim();
     cleanResponse = cleanResponse.replace(/```json\s*|\s*```/g, '');
     cleanResponse = cleanResponse.replace(/```\s*|\s*```/g, '');
-    
+
     const jsonMatch = cleanResponse.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
-      console.error('No JSON found in response:', response);
-      throw new Error('No valid JSON found in response');
+      throw new Error('No JSON found in response');
     }
-    
+
     return JSON.parse(jsonMatch[0]);
   } catch (error) {
     console.error('Error analyzing content and generating topics:', error);
-    throw new Error('Failed to analyze content and generate topics. Please check your API key and try again.');
+    // Return fallback structure
+    return {
+      analysis: {
+        writingStyle: "Informative",
+        tone: "Professional",
+        commonTopics: "General topics",
+        seoPatterns: "Standard SEO practices"
+      },
+      suggestedTopics: [
+        {
+          title: "New Blog Post Ideas",
+          description: "Fresh content ideas for your blog"
+        }
+      ]
+    };
   }
 };
 
 export const generateArticle = async (topicTitle: string, topicDescription: string, analysis: any, apiKey: string): Promise<string> => {
-  const prompt = `\nPlease write a complete, SEO-optimized blog article based on the following topic and content analysis.\n\nTopic: ${topicTitle}\nDescription: ${topicDescription}\n\nContent Analysis:\n- Writing Style: ${analysis.writingStyle}\n- Tone: ${analysis.tone}\n- Common Topics: ${analysis.commonTopics}\n- SEO Patterns: ${analysis.seoPatterns}\n\nRequirements:\n- The article should be at least 800 words.\n- Use HTML formatting (e.g., <h2>, <p>, <ul>, <li>, <strong>).\n- The article should be engaging, informative, and well-structured.\n- The article should be SEO-optimized for the given topic.\n\nPlease write the article now:\n`;
+  const prompt = `Please write a complete, SEO-optimized blog article based on the following topic and content analysis.
 
-  const response = await callGeminiAPI(prompt, apiKey);
-  return response.trim();
+Topic: ${topicTitle}
+Description: ${topicDescription}
+
+Content Analysis:
+- Writing Style: ${analysis.writingStyle}
+- Tone: ${analysis.tone}
+- Common Topics: ${analysis.commonTopics}
+- SEO Patterns: ${analysis.seoPatterns}
+
+Requirements:
+- The article should be at least 800 words
+- Use HTML formatting (e.g., <h2>, <p>, <ul>, <li>, <strong>)
+- The article should be engaging, informative, and well-structured
+- The article should be SEO-optimized for the given topic
+- Match the writing style and tone from the analysis
+
+Please write the article now:`;
+
+  return await openRouterGenerateContent(prompt, apiKey, 3072, 0.7);
 };
 
 // Blog analysis function specifically for analyzing WordPress blog content
 export const analyzeBlogContentWithAI = async (analysisPrompt: string, apiKey: string): Promise<string> => {
   try {
-    console.log('🤖 Calling Gemini API for blog analysis...');
-    const response = await callGeminiAPI(analysisPrompt, apiKey);
-    console.log('✅ Gemini API response received');
-    return response.trim();
+    console.log('🤖 Calling OpenRouter API for blog analysis...');
+    const response = await openRouterGenerateContent(analysisPrompt, apiKey, 2048, 0.7);
+    console.log('✅ OpenRouter API response received');
+    return response;
   } catch (error) {
     console.error('Error in blog analysis AI call:', error);
     throw new Error(`Blog analysis AI call failed: ${error instanceof Error ? error.message : 'Unknown error'}`);

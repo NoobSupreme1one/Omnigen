@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase';
+// Local storage implementation for user service
 
 export interface UserProfile {
   id: string;

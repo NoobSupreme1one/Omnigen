@@ -86,9 +86,8 @@ const PersonaCreationModal: React.FC<PersonaCreationModalProps> = ({
       const newPersona = await createPersonaFromSample(
         analysisForm.name,
         analysisForm.description,
-        analysisForm.authorName,
         analysisForm.sampleText,
-        apiKeys.gemini || ''
+        analysisForm.authorName
       );
 
       onPersonaCreated(newPersona);

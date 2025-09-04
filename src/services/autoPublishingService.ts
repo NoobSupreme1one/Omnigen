@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase';
+// import { supabase } from '../lib/supabase'; // Disabled - Supabase removed
 import { 
   analyzeBlogContent, 
   generateArticleIdeas, 
@@ -88,7 +88,7 @@ export const generateSampleArticle = async (
     );
 
     // Generate article ideas based on quick analysis
-    const ideas = await generateArticleIdeas(quickAnalysis, 1, apiKey);
+    const ideas = await generateArticleIdeas(quickAnalysis, 1);
 
     if (ideas.length === 0) {
       throw new Error('No sample article ideas generated');
@@ -97,7 +97,7 @@ export const generateSampleArticle = async (
     const idea = ideas[0];
 
     // Generate the full sample article
-    const article = await generateBlogStyleArticle(idea, quickAnalysis, apiKey);
+    const article = await generateBlogStyleArticle(idea, quickAnalysis);
 
     // Generate featured image for the sample article
     const featuredImageUrl = await generateArticleFeaturedImage(article.title, idea.category, apiKey);
@@ -428,8 +428,7 @@ export const getUserAutoPublishingSchedules = async (): Promise<AutoPublishingSc
 
 // Analyze blog and update schedule
 export const analyzeBlogForSchedule = async (
-  scheduleId: string,
-  apiKey: string
+  scheduleId: string
 ): Promise<BlogAnalysis> => {
   
   const { data: { user } } = await supabase.auth.getUser();
@@ -461,8 +460,7 @@ export const analyzeBlogForSchedule = async (
     const analysis = await analyzeBlogContent(
       site.url,
       site.username,
-      site.app_password,
-      apiKey
+      site.app_password
     );
 
     console.log('💾 Saving analysis to database...');
@@ -510,8 +508,7 @@ export const analyzeBlogForSchedule = async (
 
 // Generate and schedule next article
 export const generateNextArticle = async (
-  scheduleId: string,
-  apiKey: string
+  scheduleId: string
 ): Promise<GeneratedArticle> => {
   
   const { data: { user } } = await supabase.auth.getUser();
@@ -542,7 +539,7 @@ export const generateNextArticle = async (
     console.log(`📝 Generating article for ${schedule.wordpress_site.name}`);
     
     // Generate article ideas (just 1 for now)
-    const ideas = await generateArticleIdeas(analysis, 1, apiKey);
+    const ideas = await generateArticleIdeas(analysis, 1);
     
     if (ideas.length === 0) {
       throw new Error('No article ideas generated');
@@ -551,7 +548,7 @@ export const generateNextArticle = async (
     const idea = ideas[0];
     
     // Generate the full article
-    const article = await generateBlogStyleArticle(idea, analysis, apiKey);
+    const article = await generateBlogStyleArticle(idea, analysis);
     
     // Calculate next scheduled time
     const scheduledFor = calculateNextRunTime(

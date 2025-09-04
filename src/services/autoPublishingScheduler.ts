@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase';
+// import { supabase } from '../lib/supabase'; // Disabled - Supabase removed
 import {
   AutoPublishingSchedule,
   generateNextArticle,
@@ -211,7 +211,7 @@ export class AutoPublishingScheduler {
 
       // Generate article
       console.log(`🤖 Generating article for ${schedule.wordPressSite?.name}...`);
-      const generatedArticle = await generateNextArticle(schedule.id, apiKey);
+      const generatedArticle = await generateNextArticle(schedule.id);
       this.stats.articlesGenerated++;
       
       console.log(`✅ Article generated: "${generatedArticle.title}"`);

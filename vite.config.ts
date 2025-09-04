@@ -13,4 +13,23 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ['lucide-react'],
   },
+  build: {
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Core React libraries
+          'react-vendor': ['react', 'react-dom'],
+          // UI components and icons
+          'ui-vendor': ['lucide-react', 'react-quill'],
+          // PDF and file handling
+          'pdf-vendor': ['jspdf', 'file-saver', 'jszip'],
+          // Canvas and image processing
+          'canvas-vendor': ['html2canvas'],
+          // Google AI
+          'ai-vendor': ['@google/genai'],
+        },
+      },
+    },
+  },
 });
